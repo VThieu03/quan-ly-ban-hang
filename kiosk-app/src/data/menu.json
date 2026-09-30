@@ -1,0 +1,39 @@
+[
+  {
+    "category": "BEEF",
+    "items": [
+      { "id": "b1", "name": "Ba chỉ Bò", "price": 145000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Ba+chi+Bo" },
+      { "id": "b2", "name": "Bắp bò hoa", "price": 235000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Bap+bo+hoa" },
+      { "id": "b3", "name": "Thăn vai", "price": 205000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Than+vai" },
+      { "id": "b4", "name": "Gầu bò", "price": 195000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Gau+bo" },
+      { "id": "b5", "name": "Thịt nạc vai bò", "price": 205000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Nac+vai+bo" },
+      { "id": "b6", "name": "Thịt lõi vai bò", "price": 226000, "image": "https://placehold.co/400x300/ffdddd/000000?text=Loi+vai+bo" },
+      { "id": "b7", "name": "Dẻ sườn bò", "price": 241000, "image": "https://placehold.co/400x300/ffdddd/000000?text=De+suon+bo" }
+    ]
+  },
+  {
+    "category": "PORK",
+    "items": [
+      { "id": "p1", "name": "Ba chỉ heo (dày)", "price": 100000, "image": "https://placehold.co/400x300/ddffdd/000000?text=Ba+chi+heo" },
+      { "id": "p2", "name": "Ba chỉ heo", "price": 95000, "image": "https://placehold.co/400x300/ddffdd/000000?text=Ba+chi+heo" },
+      { "id": "p3", "name": "Má đào heo", "price": 75000, "image": "https://placehold.co/400x300/ddffdd/000000?text=Ma+dao+heo" },
+      { "id": "p4", "name": "Nạc vai", "price": 70000, "image": "https://placehold.co/400x300/ddffdd/000000?text=Nac+vai" }
+    ]
+  },
+  {
+    "category": "SEAFOOD",
+    "items": [
+      { "id": "s1", "name": "Tôm tươi", "price": 250000, "image": "https://placehold.co/400x300/ddddff/000000?text=Tom+tuoi" },
+      { "id": "s2", "name": "Mực lá", "price": 380000, "image": "https://placehold.co/400x300/ddddff/000000?text=Muc+la" },
+      { "id": "s3", "name": "Bạch tuộc", "price": 170000, "image": "https://placehold.co/400x300/ddddff/000000?text=Bach+tuoc" }
+    ]
+  },
+  {
+    "category": "SIDEDISHES",
+    "items": [
+      { "id": "sd1", "name": "Xúc xích Đức", "price": 140000, "image": "https://placehold.co/400x300/ffffdd/000000?text=Xuc+xich+Duc" },
+      { "id": "sd2", "name": "Lạp xưởng nướng", "price": 180000, "image": "https://placehold.co/400x300/ffffdd/000000?text=Lap+xuong" },
+      { "id": "sd3", "name": "Lá mè", "price": 210000, "image": "https://placehold.co/400x300/ffffdd/000000?text=La+me" }
+    ]
+  }
+]
