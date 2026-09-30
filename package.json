@@ -1,0 +1,21 @@
+{
+  "name": "quan-ly-ban-hang",
+  "private": true,
+  "workspaces": [
+    "server",
+    "kiosk-app",
+    "pos-app",
+    "print-agent"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,order,pos -c blue,green,magenta \"npm run dev -w server\" \"npm run dev -w kiosk-app\" \"npm run dev -w pos-app\"",
+    "build": "npm run build -w kiosk-app && npm run build -w pos-app",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w print-agent",
+    "lint": "npm run lint -w kiosk-app && npm run lint -w pos-app",
+    "print-agent": "npm start -w print-agent"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

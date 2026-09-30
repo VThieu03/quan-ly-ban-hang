@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* Tailwind v4 mặc định viền theo màu chữ; giữ viền xám nhạt như v3. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f3f4f6;
+}
+
+/* Khi in: chỉ in phần có class print-area (hóa đơn, mã QR). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+}

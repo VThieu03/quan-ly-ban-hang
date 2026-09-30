@@ -1,0 +1,8 @@
+node_modules
+dist
+*.log
+.env
+.DS_Store
+
+# Database SQLite (dữ liệu thật của quán, không commit)
+server/data/
