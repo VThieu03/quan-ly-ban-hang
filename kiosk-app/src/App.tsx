@@ -264,6 +264,26 @@ function App() {
                 ))
               )}
             </div>
+            {orderHistory.length > 0 && (
+              <div className="p-6 border-t border-gray-200 bg-white">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-xl font-bold text-gray-700">Tổng thanh toán (Grand Total):</span>
+                  <span className="text-3xl font-bold text-red-600">
+                    {formatPrice(orderHistory.reduce((sum, order) => sum + order.total, 0))}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => {
+                    alert('Thanh toán thành công! Bàn đã được dọn và lịch sử đã được làm mới.');
+                    setOrderHistory([]);
+                    setShowHistory(false);
+                  }}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-bold text-2xl transition-colors shadow-lg"
+                >
+                  Thanh toán toàn bộ
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
