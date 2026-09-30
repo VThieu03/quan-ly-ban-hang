@@ -20,9 +20,20 @@ type CartItem = MenuItem & {
 function App() {
   const [activeCategory, setActiveCategory] = useState<string>(menuData[0].category);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'success'>('idle');
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  };
+
+  const handleOrder = () => {
+    if (cart.length > 0) {
+      setOrderStatus('success');
+      setTimeout(() => {
+        setCart([]);
+        setOrderStatus('idle');
+      }, 3000);
+    }
   };
 
   const addToCart = (item: MenuItem) => {
@@ -162,16 +173,28 @@ function App() {
               cart.length > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'
             }`}
             disabled={cart.length === 0}
-            onClick={() => {
-              if (cart.length > 0) {
-                alert('Chức năng thanh toán đang được phát triển!');
-              }
-            }}
+            onClick={handleOrder}
           >
-            Thanh toán
+            Gọi món (Gửi vào bếp)
           </button>
         </div>
       </div>
+
+      {/* Order Success Modal */}
+      {orderStatus === 'success' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-white p-10 rounded-3xl text-center shadow-2xl transform transition-all scale-100 flex flex-col items-center max-w-md w-full mx-4">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+              <span className="text-6xl">👨‍🍳</span>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">Đã gửi vào Bếp!</h2>
+            <p className="text-gray-500 text-lg mb-8">Món ăn của bạn đang được chuẩn bị. Vui lòng đợi trong giây lát.</p>
+            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+              <div className="bg-green-500 h-full w-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
