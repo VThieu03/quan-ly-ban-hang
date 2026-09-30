@@ -1,39 +1,43 @@
 [
   {
-    "category": "BEEF",
+    "id": "beef",
+    "title": { "vi": "Thịt Bò", "en": "Beef", "ko": "소고기", "zh": "牛肉", "ja": "牛肉" },
     "items": [
-      { "id": "b1", "name": "Ba chỉ Bò", "price": 145000, "image": "/images/beef_bachi.jpg" },
-      { "id": "b2", "name": "Bắp bò hoa", "price": 235000, "image": "/images/beef_bapbohoa.jpg" },
-      { "id": "b3", "name": "Thăn vai", "price": 205000, "image": "/images/beef_thanvai.jpg" },
-      { "id": "b4", "name": "Gầu bò", "price": 195000, "image": "/images/beef_gaubo.jpg" },
-      { "id": "b5", "name": "Thịt nạc vai bò", "price": 205000, "image": "/images/beef_thanvai.jpg" },
-      { "id": "b6", "name": "Thịt lõi vai bò", "price": 226000, "image": "/images/beef_loivaibo.jpg" },
-      { "id": "b7", "name": "Dẻ sườn bò", "price": 241000, "image": "/images/beef_desuon.jpg" }
+      { "id": "b1", "name": { "vi": "Ba chỉ Bò", "en": "Beef Short Plate", "ko": "우삼겹", "zh": "牛五花", "ja": "牛バラ肉" }, "price": 145000, "image": "/images/beef_bachi.jpg" },
+      { "id": "b2", "name": { "vi": "Bắp bò hoa", "en": "Beef Heel Muscle", "ko": "아롱사태", "zh": "牛腱", "ja": "牛すね肉" }, "price": 235000, "image": "/images/beef_bapbohoa.jpg" },
+      { "id": "b3", "name": { "vi": "Thăn vai", "en": "Beef Chuck Eye Roll", "ko": "알목심", "zh": "牛肩肉", "ja": "肩ロース" }, "price": 205000, "image": "/images/beef_thanvai.jpg" },
+      { "id": "b4", "name": { "vi": "Gầu bò", "en": "Beef Brisket", "ko": "차돌박이", "zh": "牛胸肉", "ja": "牛胸肉" }, "price": 195000, "image": "/images/beef_gaubo.jpg" },
+      { "id": "b5", "name": { "vi": "Thịt nạc vai bò", "en": "Beef Chuck", "ko": "목심", "zh": "牛肩肉", "ja": "肩ロース" }, "price": 205000, "image": "/images/beef_thanvai.jpg" },
+      { "id": "b6", "name": { "vi": "Thịt lõi vai bò", "en": "Beef Top Blade", "ko": "부채살", "zh": "板腱牛排", "ja": "ミスジ" }, "price": 226000, "image": "/images/beef_loivaibo.jpg" },
+      { "id": "b7", "name": { "vi": "Dẻ sườn bò", "en": "Beef Rib Fingers", "ko": "갈비살", "zh": "牛肋条", "ja": "中落ちカルビ" }, "price": 241000, "image": "/images/beef_desuon.jpg" }
     ]
   },
   {
-    "category": "PORK",
+    "id": "pork",
+    "title": { "vi": "Thịt Heo", "en": "Pork", "ko": "돼지고기", "zh": "猪肉", "ja": "豚肉" },
     "items": [
-      { "id": "p1", "name": "Ba chỉ heo (dày)", "price": 100000, "image": "/images/pork.jpg" },
-      { "id": "p2", "name": "Ba chỉ heo", "price": 95000, "image": "/images/pork_bachimong.jpg" },
-      { "id": "p3", "name": "Má đào heo", "price": 75000, "image": "/images/pork_madao.jpg" },
-      { "id": "p4", "name": "Nạc vai", "price": 70000, "image": "/images/pork_nacvai.jpg" }
+      { "id": "p1", "name": { "vi": "Ba chỉ heo (dày)", "en": "Thick Pork Belly", "ko": "두꺼운 삼겹살", "zh": "厚切猪五花", "ja": "厚切り豚バラ" }, "price": 100000, "image": "/images/pork.jpg" },
+      { "id": "p2", "name": { "vi": "Ba chỉ heo mỏng", "en": "Sliced Pork Belly", "ko": "대패 삼겹살", "zh": "薄切猪五花", "ja": "豚バラ薄切り" }, "price": 95000, "image": "/images/pork_bachimong.jpg" },
+      { "id": "p3", "name": { "vi": "Má đào heo", "en": "Pork Jowl", "ko": "항정살", "zh": "猪颈肉", "ja": "豚トロ" }, "price": 75000, "image": "/images/pork_madao.jpg" },
+      { "id": "p4", "name": { "vi": "Nạc vai", "en": "Pork Shoulder", "ko": "목살", "zh": "猪梅花肉", "ja": "豚肩ロース" }, "price": 70000, "image": "/images/pork_nacvai.jpg" }
     ]
   },
   {
-    "category": "SEAFOOD",
+    "id": "seafood",
+    "title": { "vi": "Hải Sản", "en": "Seafood", "ko": "해산물", "zh": "海鲜", "ja": "シーフード" },
     "items": [
-      { "id": "s1", "name": "Tôm tươi", "price": 250000, "image": "/images/seafood.jpg" },
-      { "id": "s2", "name": "Mực lá", "price": 380000, "image": "/images/seafood.jpg" },
-      { "id": "s3", "name": "Bạch tuộc", "price": 170000, "image": "/images/seafood.jpg" }
+      { "id": "s1", "name": { "vi": "Tôm tươi", "en": "Fresh Shrimp", "ko": "새우", "zh": "鲜虾", "ja": "エビ" }, "price": 250000, "image": "/images/seafood_tom.jpg" },
+      { "id": "s2", "name": { "vi": "Mực lá", "en": "Squid", "ko": "오징어", "zh": "鱿鱼", "ja": "イカ" }, "price": 380000, "image": "/images/seafood_muc.jpg" },
+      { "id": "s3", "name": { "vi": "Bạch tuộc", "en": "Octopus", "ko": "쭈꾸미", "zh": "章鱼", "ja": "タコ" }, "price": 170000, "image": "/images/seafood_bachtuoc.jpg" }
     ]
   },
   {
-    "category": "SIDEDISHES",
+    "id": "sidedishes",
+    "title": { "vi": "Ăn Kèm", "en": "Side Dishes", "ko": "사이드 메뉴", "zh": "小菜", "ja": "サイドメニュー" },
     "items": [
-      { "id": "sd1", "name": "Xúc xích Đức", "price": 140000, "image": "/images/sidedishes.jpg" },
-      { "id": "sd2", "name": "Lạp xưởng nướng", "price": 180000, "image": "/images/sidedishes.jpg" },
-      { "id": "sd3", "name": "Lá mè", "price": 210000, "image": "/images/sidedishes.jpg" }
+      { "id": "sd1", "name": { "vi": "Xúc xích Đức", "en": "German Sausage", "ko": "독일 소시지", "zh": "德国香肠", "ja": "ドイツソーセージ" }, "price": 140000, "image": "/images/sidedish_xucxich.jpg" },
+      { "id": "sd2", "name": { "vi": "Lạp xưởng nướng", "en": "Grilled Sausage", "ko": "구운 소시지", "zh": "烤香肠", "ja": "焼きソーセージ" }, "price": 180000, "image": "/images/sidedish_lapxuong.jpg" },
+      { "id": "sd3", "name": { "vi": "Lá mè", "en": "Perilla Leaves", "ko": "깻잎", "zh": "苏子叶", "ja": "エゴマの葉" }, "price": 210000, "image": "/images/sidedish_lame.jpg" }
     ]
   }
 ]
