@@ -2,22 +2,22 @@
   {
     "category": "BEEF",
     "items": [
-      { "id": "b1", "name": "Ba chỉ Bò", "price": 145000, "image": "/images/beef.jpg" },
-      { "id": "b2", "name": "Bắp bò hoa", "price": 235000, "image": "/images/beef.jpg" },
-      { "id": "b3", "name": "Thăn vai", "price": 205000, "image": "/images/beef.jpg" },
-      { "id": "b4", "name": "Gầu bò", "price": 195000, "image": "/images/beef.jpg" },
-      { "id": "b5", "name": "Thịt nạc vai bò", "price": 205000, "image": "/images/beef.jpg" },
-      { "id": "b6", "name": "Thịt lõi vai bò", "price": 226000, "image": "/images/beef.jpg" },
-      { "id": "b7", "name": "Dẻ sườn bò", "price": 241000, "image": "/images/beef.jpg" }
+      { "id": "b1", "name": "Ba chỉ Bò", "price": 145000, "image": "/images/beef_bachi.jpg" },
+      { "id": "b2", "name": "Bắp bò hoa", "price": 235000, "image": "/images/beef_bapbohoa.jpg" },
+      { "id": "b3", "name": "Thăn vai", "price": 205000, "image": "/images/beef_thanvai.jpg" },
+      { "id": "b4", "name": "Gầu bò", "price": 195000, "image": "/images/beef_gaubo.jpg" },
+      { "id": "b5", "name": "Thịt nạc vai bò", "price": 205000, "image": "/images/beef_thanvai.jpg" },
+      { "id": "b6", "name": "Thịt lõi vai bò", "price": 226000, "image": "/images/beef_loivaibo.jpg" },
+      { "id": "b7", "name": "Dẻ sườn bò", "price": 241000, "image": "/images/beef_desuon.jpg" }
     ]
   },
   {
     "category": "PORK",
     "items": [
       { "id": "p1", "name": "Ba chỉ heo (dày)", "price": 100000, "image": "/images/pork.jpg" },
-      { "id": "p2", "name": "Ba chỉ heo", "price": 95000, "image": "/images/pork.jpg" },
-      { "id": "p3", "name": "Má đào heo", "price": 75000, "image": "/images/pork.jpg" },
-      { "id": "p4", "name": "Nạc vai", "price": 70000, "image": "/images/pork.jpg" }
+      { "id": "p2", "name": "Ba chỉ heo", "price": 95000, "image": "/images/pork_bachimong.jpg" },
+      { "id": "p3", "name": "Má đào heo", "price": 75000, "image": "/images/pork_madao.jpg" },
+      { "id": "p4", "name": "Nạc vai", "price": 70000, "image": "/images/pork_nacvai.jpg" }
     ]
   },
   {
