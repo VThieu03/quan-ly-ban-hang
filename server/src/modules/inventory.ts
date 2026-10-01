@@ -2,6 +2,7 @@ import { db, now, transaction } from '../db.ts';
 import { bad, HttpError, int, num, oneOf, str } from '../http.ts';
 import { availableStock, portionsByItem } from './availability.ts';
 import { findMenuItem } from './menu.ts';
+import { FORECAST_DAYS } from '../../../shared/config.ts';
 import type {
   DishForecast,
   Ingredient,
@@ -277,7 +278,7 @@ export function restoreForSession(sessionId: number, staffId: number) {
  *    `days` ngày gần nhất (doanh thu món chia cho các nguyên liệu theo tỉ trọng giá vốn). Nguyên liệu
  *    chưa bán lần nào thì tạm tính theo giá bán các món dùng nó.
  */
-export function getForecast(days = 30): InventoryForecast {
+export function getForecast(days = FORECAST_DAYS): InventoryForecast {
   const stock = availableStock();
   const portions = portionsByItem(stock);
   const costs = menuCosts();

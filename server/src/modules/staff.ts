@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { db, now, randomToken, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
+import { LOGIN_LOCK_MS, LOGIN_MAX_FAILED } from '../../../shared/config.ts';
 import { ROLES } from '../../../shared/permissions.ts';
 import type { Role } from '../../../shared/permissions.ts';
 import type { CashShift, StaffMember, Timesheet } from '../../../shared/types.ts';
@@ -100,8 +101,8 @@ export function ensureAdmin() {
 // ---------- Đăng nhập ----------
 
 // Chống dò PIN theo từng địa chỉ IP: sai 5 lần thì khóa 1 phút.
-const MAX_FAILED = 5;
-const LOCK_MS = 60_000;
+const MAX_FAILED = LOGIN_MAX_FAILED;
+const LOCK_MS = LOGIN_LOCK_MS;
 const failures = new Map<string, { count: number; lockedUntil: number }>();
 
 export function login(pinInput: unknown, ip: string): { token: string; staff: StaffMember } {

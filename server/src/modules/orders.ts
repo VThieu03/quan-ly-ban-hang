@@ -1,15 +1,13 @@
 import { db, now, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
 import { getSettings } from '../settings.ts';
+import { MAX_NOTE_LENGTH, MAX_ORDER_LINES as MAX_LINES, MAX_QUANTITY_PER_ITEM as MAX_QUANTITY } from '../../../shared/config.ts';
 import { portionsByItem } from './availability.ts';
 import { findMenuItem } from './menu.ts';
 import { enqueueKitchenTickets } from './printing.ts';
 import type { NewOrderRequest, Order, OrderStatus } from '../../../shared/types.ts';
 
 const ORDER_STATUSES: OrderStatus[] = ['new', 'preparing', 'served', 'cancelled'];
-const MAX_QUANTITY = 99;
-const MAX_LINES = 50;
-const MAX_NOTE_LENGTH = 200;
 
 type OrderRow = {
   id: number;

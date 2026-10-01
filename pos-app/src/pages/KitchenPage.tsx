@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { formatTime } from '../../../shared/format.ts';
 import type { OrderStatus } from '../../../shared/types.ts';
 import { api, beep, run } from '../api.ts';
-import { useData } from '../context.ts';
+import { useData, useOperations } from '../context.ts';
 
 const COLUMNS: { status: OrderStatus; title: string; next: OrderStatus; action: string; color: string }[] = [
   { status: 'new', title: 'Đơn mới', next: 'preparing', action: 'Bắt đầu làm', color: 'bg-blue-600 hover:bg-blue-700' },
   { status: 'preparing', title: 'Đang làm', next: 'served', action: 'Đã lên món ✓', color: 'bg-green-600 hover:bg-green-700' },
 ];
 
-const LATE_MINUTES = 15;
 
 export function KitchenPage() {
   const [orders] = useData(api.kitchen);
+  const { kitchenLateMinutes } = useOperations();
   const [now, setNow] = useState(() => Date.now());
   const prevNewIds = useRef<Set<number> | null>(null);
 
@@ -47,7 +47,7 @@ export function KitchenPage() {
                   <div key={order.id} className="bg-white rounded-2xl shadow p-4">
                     <div className="flex justify-between items-baseline mb-2">
                       <span className="text-2xl font-bold">{order.tableName}</span>
-                      <span className={minutes >= LATE_MINUTES ? 'text-red-600 font-bold' : 'text-gray-500'}>
+                      <span className={minutes >= kitchenLateMinutes ? 'text-red-600 font-bold' : 'text-gray-500'}>
                         {formatTime(order.createdAt)} · {minutes} phút
                       </span>
                     </div>

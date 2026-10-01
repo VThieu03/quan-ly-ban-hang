@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { POLL_MS } from '../../shared/config.ts';
 import { formatPrice } from '../../shared/format.ts';
 import { LANGS } from '../../shared/types.ts';
 import type { Banner, CustomerTableView, Lang, MenuCategory } from '../../shared/types.ts';
@@ -21,7 +22,6 @@ type LoadState = 'loading' | 'ready' | 'not_found' | 'error';
 // Mã QR của mỗi bàn trỏ tới "/?t=<token>".
 const token = new URLSearchParams(window.location.search).get('t');
 const cartKey = `cart:${token}`;
-const POLL_MS = 10_000;
 const BEST_SELLER_ID = '__best_seller';
 
 function readStorage<T>(key: string): T | null {

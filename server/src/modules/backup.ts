@@ -1,10 +1,11 @@
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dataDir, db } from '../db.ts';
+import { BACKUP_KEEP } from '../../../shared/config.ts';
 
 // Sao lưu database SQLite bằng VACUUM INTO (an toàn khi server đang chạy).
 
 export const backupDir = process.env.BACKUP_DIR ?? `${dataDir}backups/`;
-const KEEP = Number(process.env.BACKUP_KEEP ?? 30);
+const KEEP = Number(process.env.BACKUP_KEEP ?? BACKUP_KEEP);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function stamp() {

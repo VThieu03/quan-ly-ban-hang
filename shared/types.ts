@@ -401,6 +401,14 @@ export type Settings = {
   printing: { removeAccents: boolean; kitchenTickets: boolean; receiptOnCheckout: boolean };
   /** autoSoldOut: tự báo "Hết món" khi không còn đủ nguyên liệu cho 1 phần, tự bật lại khi có hàng. */
   inventory: { autoSoldOut: boolean };
+  /** Thông số vận hành chủ quán tự chỉnh trong Cài đặt → Vận hành (mặc định lấy từ shared/config.ts). */
+  operations: {
+    defaultPortion: number;
+    lowStockBadge: number;
+    kitchenLateMinutes: number;
+    cancelReasons: string[];
+    voidReasons: string[];
+  };
 };
 
 // ---------- Dự báo tồn kho ----------

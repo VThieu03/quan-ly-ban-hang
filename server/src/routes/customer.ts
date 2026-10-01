@@ -21,11 +21,12 @@ function tableFromToken(req: Request) {
 }
 
 customerRouter.get('/menu', (_req, res) => {
-  // Chỉ cho khách thấy số phần còn lại khi quán bật tự báo hết món (khi đó số liệu kho mới được dùng thật).
-  const showRemaining = getSettings().inventory.autoSoldOut;
-  res.json(
-    getMenu().map((c) => ({ ...c, items: c.items.map((i) => ({ ...i, remaining: showRemaining ? i.remaining : null })) })),
-  );
+  // Khách chỉ thấy số phần còn lại khi quán bật tự báo hết món (số liệu kho được dùng thật)
+  // và khi món sắp hết (≤ ngưỡng trong Cài đặt → Vận hành) để hiện nhãn "Chỉ còn N phần".
+  const { inventory, operations } = getSettings();
+  const show = (remaining: number | null) =>
+    inventory.autoSoldOut && remaining !== null && remaining <= operations.lowStockBadge ? remaining : null;
+  res.json(getMenu().map((c) => ({ ...c, items: c.items.map((i) => ({ ...i, remaining: show(i.remaining) })) })));
 });
 
 customerRouter.get('/banners', (_req, res) => {

@@ -1,10 +1,10 @@
 import { db, now } from '../db.ts';
 import { bad, HttpError, oneOf, str } from '../http.ts';
 import { getSettings } from '../settings.ts';
+import { PRINT_MAX_ATTEMPTS as MAX_ATTEMPTS } from '../../../shared/config.ts';
 import { formatPrice, formatTime } from '../../../shared/format.ts';
 import type { Order, Printer, PrinterKind, PrintJob, PrintLine } from '../../../shared/types.ts';
 
-const MAX_ATTEMPTS = 5;
 
 type PrinterRow = { id: number; name: string; kind: PrinterKind; address: string; category_ids: string; active: number };
 

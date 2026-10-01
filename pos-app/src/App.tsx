@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { POLL_MS } from '../../shared/config.ts';
 import { formatPrice } from '../../shared/format.ts';
 import { can, ROLE_LABELS } from '../../shared/permissions.ts';
 import type { Permission } from '../../shared/permissions.ts';
@@ -41,7 +42,6 @@ const PAGES = [
 
 type PageId = (typeof PAGES)[number]['id'];
 
-const POLL_MS = 10_000;
 
 function App() {
   const [token, setTokenState] = useState(getToken);
@@ -104,6 +104,11 @@ function App() {
       clearInterval(timer);
     };
   }, [token]);
+
+  // Tải lại cấu hình khi có thay đổi (vd vừa sửa Cài đặt → Vận hành) để mọi trang dùng số mới.
+  useEffect(() => {
+    if (token) api.config().then(setConfig, () => {});
+  }, [token, version]);
 
   const staff = me?.staff;
   useEffect(() => {

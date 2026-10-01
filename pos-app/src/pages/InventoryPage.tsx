@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { formatPrice } from '../../../shared/format.ts';
 import type { Ingredient, MenuCategory, MenuItem, Purchase, RecipeLine, StockMoveType, Supplier } from '../../../shared/types.ts';
 import { api, errorText, run } from '../api.ts';
-import { useApp, useCan, useData } from '../context.ts';
+import { useApp, useCan, useData, useOperations } from '../context.ts';
+import { FORECAST_DAYS, UNIT_SUGGESTIONS } from '../../../shared/config.ts';
 import {
   Badge,
   Button,
@@ -35,9 +36,6 @@ const MOVE_LABELS: Record<StockMoveType, string> = {
   cost_adjust: 'Sửa giá vốn',
 };
 
-/** Lượng nguyên liệu mặc định cho 1 phần khi tạo định lượng từ thực đơn (đơn vị kg). */
-const DEFAULT_PORTION = '0.15';
-const UNIT_SUGGESTIONS = ['kg', 'g', 'lít', 'ml', 'cái', 'quả', 'gói', 'hộp', 'chai', 'lon', 'bó'];
 const money = (n: number) => formatPrice(Math.round(n));
 /** Đơn vị lớn (kg, lít): định lượng 1 phần thường < 1, nhập lớn hơn 2 thì nhắc kiểm tra. */
 const isBulkUnit = (unit: string) => ['kg', 'lít', 'lit', 'l'].includes(unit.trim().toLowerCase());
@@ -440,6 +438,8 @@ function FromMenuDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // Lượng mặc định cho 1 phần: Cài đặt → Vận hành.
+  const portion = String(useOperations().defaultPortion);
   const [rows, setRows] = useState<FromMenuRow[]>(() =>
     menu.flatMap((c) =>
       c.items.map((item) => {
@@ -452,7 +452,7 @@ function FromMenuDialog({
           checked: !hasRecipe,
           name: item.name.vi,
           unit: 'kg',
-          quantity: DEFAULT_PORTION,
+          quantity: portion,
           openingStock: '',
           cost: 0,
         };
@@ -461,7 +461,7 @@ function FromMenuDialog({
   );
   const [showAll, setShowAll] = useState(false);
   const [bulkUnit, setBulkUnit] = useState('kg');
-  const [bulkQty, setBulkQty] = useState(DEFAULT_PORTION);
+  const [bulkQty, setBulkQty] = useState(portion);
   const [busy, setBusy] = useState(false);
 
   const existingOf = (name: string) => ingredients.find((i) => i.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -840,7 +840,7 @@ function AdjustDialog({ ingredient, onClose, onSaved }: { ingredient: Ingredient
 function ForecastTab() {
   const { config } = useApp();
   const can = useCan();
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(FORECAST_DAYS);
   const [forecast] = useData(() => api.forecast(days), [days]);
   const [autoSoldOut, setAutoSoldOut] = useState<boolean | null>(null);
   const autoOn = autoSoldOut ?? config?.autoSoldOut ?? false;

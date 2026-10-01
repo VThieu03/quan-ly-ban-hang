@@ -1,10 +1,11 @@
 import { db, now } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
+import { RESERVATION_UPCOMING_HOURS } from '../../../shared/config.ts';
 import type { Reservation, ReservationStatus } from '../../../shared/types.ts';
 
 const STATUSES: ReservationStatus[] = ['booked', 'seated', 'cancelled', 'no_show'];
 /** Bàn có lịch đặt trong khoảng này sẽ được nhắc trên sơ đồ bàn. */
-const UPCOMING_MS = 3 * 60 * 60 * 1000;
+const UPCOMING_MS = RESERVATION_UPCOMING_HOURS * 60 * 60 * 1000;
 
 type ReservationRow = {
   id: number;

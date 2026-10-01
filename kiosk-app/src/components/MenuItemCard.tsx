@@ -2,9 +2,6 @@ import { formatPrice } from '../../../shared/format.ts';
 import type { Lang, MenuItem } from '../../../shared/types.ts';
 import type { Translate } from '../i18n.ts';
 
-/** Còn từ chừng này phần trở xuống thì báo "Chỉ còn N phần". */
-const LOW_STOCK = 5;
-
 type Props = {
   item: MenuItem;
   lang: Lang;
@@ -27,7 +24,8 @@ export function MenuItemCard({ item, lang, t, quantityInCart, highlighted = fals
     >
       <div className="aspect-4/3 bg-gray-200 w-full relative">
         <img src={item.image} alt={item.name[lang]} loading="lazy" className="w-full h-full object-cover" />
-        {item.available && item.remaining !== null && item.remaining > 0 && item.remaining <= LOW_STOCK && (
+        {/* Server chỉ gửi số phần còn lại khi món sắp hết (ngưỡng trong Cài đặt → Vận hành). */}
+        {item.available && item.remaining !== null && item.remaining > 0 && (
           <span className="absolute bottom-2 left-2 bg-red-600 text-white text-xs font-bold rounded-full px-2 py-1 shadow">
             {t('onlyLeft').replace('{n}', String(item.remaining))}
           </span>

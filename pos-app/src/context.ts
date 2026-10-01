@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { can } from '../../shared/permissions.ts';
 import type { Permission } from '../../shared/permissions.ts';
-import type { StaffMember } from '../../shared/types.ts';
+import {
+  DEFAULT_CANCEL_REASONS,
+  DEFAULT_KITCHEN_LATE_MINUTES,
+  DEFAULT_LOW_STOCK_BADGE,
+  DEFAULT_PORTION,
+  DEFAULT_VOID_REASONS,
+} from '../../shared/config.ts';
+import type { Settings, StaffMember } from '../../shared/types.ts';
 import type { PosConfig } from './api.ts';
 
 export type AppContextValue = {
@@ -17,6 +24,20 @@ export function useApp() {
   const value = useContext(AppContext);
   if (!value) throw new Error('useApp phải nằm trong AppContext');
   return value;
+}
+
+/** Thông số vận hành (Cài đặt → Vận hành); chưa tải xong thì dùng mặc định trong shared/config.ts. */
+export function useOperations(): Settings['operations'] {
+  const { config } = useApp();
+  return (
+    config?.operations ?? {
+      defaultPortion: DEFAULT_PORTION,
+      lowStockBadge: DEFAULT_LOW_STOCK_BADGE,
+      kitchenLateMinutes: DEFAULT_KITCHEN_LATE_MINUTES,
+      cancelReasons: DEFAULT_CANCEL_REASONS,
+      voidReasons: DEFAULT_VOID_REASONS,
+    }
+  );
 }
 
 export function useCan() {

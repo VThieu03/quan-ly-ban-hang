@@ -1,5 +1,6 @@
 import { connect } from 'node:net';
 import { render } from './escpos.ts';
+import { PAPER_COLUMNS, PRINT_AGENT_POLL_MS, PRINTER_TIMEOUT_MS } from '../../shared/config.ts';
 import type { PrintJob } from '../../shared/types.ts';
 
 // Chương trình in chạy trên một máy tính trong quán (cùng mạng LAN với máy in).
@@ -9,9 +10,8 @@ import type { PrintJob } from '../../shared/types.ts';
 
 const SERVER_URL = (process.env.SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const AGENT_KEY = process.env.AGENT_KEY ?? '';
-const POLL_MS = Number(process.env.POLL_MS ?? 2000);
-const COLUMNS = Number(process.env.PAPER_COLUMNS ?? 48);
-const PRINTER_TIMEOUT_MS = 5000;
+const POLL_MS = Number(process.env.POLL_MS ?? PRINT_AGENT_POLL_MS);
+const COLUMNS = Number(process.env.PAPER_COLUMNS ?? PAPER_COLUMNS);
 
 if (!AGENT_KEY) {
   console.error('Thiếu AGENT_KEY (lấy trong app quầy: Cài đặt → Máy in).');

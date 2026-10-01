@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatPrice, formatTime } from '../../../shared/format.ts';
 import type { BillSummary, InvoiceInfo } from '../../../shared/types.ts';
 import { api, errorText, paymentLabels, run } from '../api.ts';
-import { useApp, useCan, useData } from '../context.ts';
+import { useApp, useCan, useData, useOperations } from '../context.ts';
 import { Badge, Button, DateRange, Empty, Input, Modal, PageHeader, Table } from '../components/ui.tsx';
 import { useDateRange } from '../dates.ts';
 
@@ -14,7 +14,6 @@ export function InvoiceBadge({ invoice }: { invoice: InvoiceInfo | null }) {
   return <Badge color="amber">Đang gửi</Badge>;
 }
 
-const VOID_REASONS = ['Tính nhầm món / giá', 'Khách trả món', 'Thanh toán nhầm bàn', 'Nhập sai hình thức thanh toán'];
 
 export function BillsPage() {
   const { config } = useApp();
@@ -98,7 +97,8 @@ function BillDialog({ billId, summary, onClose }: { billId: number; summary?: Bi
   const can = useCan();
   const [bill, reload] = useData(() => api.bill(billId), [billId]);
   const [voidOpen, setVoidOpen] = useState(false);
-  const [voidReason, setVoidReason] = useState(VOID_REASONS[0]);
+  const { voidReasons } = useOperations();
+  const [voidReason, setVoidReason] = useState(voidReasons[0] ?? '');
   const [buyerOpen, setBuyerOpen] = useState(false);
   const [buyer, setBuyer] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [busy, setBusy] = useState(false);
@@ -175,7 +175,7 @@ function BillDialog({ billId, summary, onClose }: { billId: number; summary?: Bi
                 hủy hóa đơn điện tử (nếu có).
               </p>
               <div className="flex flex-wrap gap-2">
-                {VOID_REASONS.map((r) => (
+                {voidReasons.map((r) => (
                   <button
                     key={r}
                     onClick={() => setVoidReason(r)}

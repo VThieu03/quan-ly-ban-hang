@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import { BANNER_ROTATE_MS } from '../../../shared/config.ts';
 import type { Banner, Lang } from '../../../shared/types.ts';
 
-const ROTATE_MS = 5000;
 
 type Props = {
   banners: Banner[];
@@ -16,7 +16,7 @@ export function BannerCarousel({ banners, lang, onSelect }: Props) {
 
   useEffect(() => {
     if (banners.length < 2) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % banners.length), ROTATE_MS);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % banners.length), BANNER_ROTATE_MS);
     return () => clearInterval(timer);
   }, [banners.length]);
 

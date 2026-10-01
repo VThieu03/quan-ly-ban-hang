@@ -16,6 +16,7 @@ import { customerRouter } from './routes/customer.ts';
 import { integrationsRouter } from './routes/integrations.ts';
 import { operationsRouter } from './routes/operations.ts';
 import { getSecrets } from './settings.ts';
+import { INVOICE_RETRY_MS } from '../../shared/config.ts';
 
 const isDev = process.argv.includes('--dev');
 const PORT = Number(process.env.PORT ?? 3000);
@@ -39,7 +40,7 @@ ensureAdmin();
 getSecrets();
 if (process.env.BACKUP !== 'off') scheduleBackups();
 // Gửi lại hóa đơn điện tử lỗi (mất mạng, nhà cung cấp bảo trì...) mỗi 5 phút.
-setInterval(() => retryPendingInvoices().catch((err) => console.error('Gửi lại HĐĐT lỗi:', err)), 5 * 60_000).unref();
+setInterval(() => retryPendingInvoices().catch((err) => console.error('Gửi lại HĐĐT lỗi:', err)), INVOICE_RETRY_MS).unref();
 
 const app = express();
 app.set('orderBaseUrl', orderBaseUrl);

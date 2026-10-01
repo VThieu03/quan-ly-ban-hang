@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { broadcast } from '../events.ts';
 import { dateRange, HttpError, oneOf, str } from '../http.ts';
 import { afterStockChange } from '../modules/availability.ts';
+import { FORECAST_DAYS } from '../../../shared/config.ts';
 import { backupPath, createBackup, listBackups } from '../modules/backup.ts';
 import { recentBankTransactions } from '../modules/bank.ts';
 import {
@@ -212,7 +213,7 @@ adminRouter.patch('/inventory/ingredients/:id', need('inventory'), (req, res) =>
 });
 
 adminRouter.get('/inventory/forecast', need('inventory', 'menu'), (req, res) => {
-  res.json(getForecast(req.query.days ? Math.min(365, Math.max(1, Number(req.query.days) || 30)) : 30));
+  res.json(getForecast(req.query.days ? Math.min(365, Math.max(1, Number(req.query.days) || FORECAST_DAYS)) : FORECAST_DAYS));
 });
 
 adminRouter.post('/inventory/costs', need('inventory'), (req, res) => {

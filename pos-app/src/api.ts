@@ -32,6 +32,8 @@ import type {
   Timesheet,
 } from '../../shared/types.ts';
 
+import { FORECAST_DAYS } from '../../shared/config.ts';
+
 const TOKEN_KEY = 'staffToken';
 
 export function getToken() {
@@ -94,6 +96,7 @@ export type PosConfig = {
   bankConfigured: boolean;
   invoiceEnabled: boolean;
   autoSoldOut: boolean;
+  operations: Settings['operations'];
 };
 
 export type MeInfo = { staff: StaffMember; timesheet: Timesheet | null; cashShift: CashShift | null };
@@ -215,7 +218,7 @@ export const api = {
   recipes: () => request<Record<string, RecipeLine[]>>('/inventory/recipes'),
   setIngredientCosts: (lines: { ingredientId: number; cost: number }[]) => request<void>('/inventory/costs', 'POST', { lines }),
   linkFromMenu: (lines: unknown[]) => request<{ created: number; linked: number }>('/inventory/from-menu', 'POST', { lines }),
-  forecast: (days = 30) => request<InventoryForecast>(`/inventory/forecast${q({ days: String(days) })}`),
+  forecast: (days = FORECAST_DAYS) => request<InventoryForecast>(`/inventory/forecast${q({ days: String(days) })}`),
   setRecipe: (menuItemId: string, lines: RecipeLine[]) =>
     request<void>(`/inventory/recipes/${encodeURIComponent(menuItemId)}`, 'PUT', { lines }),
   suppliers: () => request<Supplier[]>('/inventory/suppliers'),

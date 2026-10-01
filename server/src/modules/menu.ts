@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dataDir, db, randomToken, transaction } from '../db.ts';
 import { bad, HttpError, int, str } from '../http.ts';
 import { portionsByItem } from './availability.ts';
+import { MAX_IMAGE_BYTES } from '../../../shared/config.ts';
 import { LANGS } from '../../../shared/types.ts';
 import type { LocalizedText, MenuCategory, MenuItem } from '../../../shared/types.ts';
 
@@ -159,7 +160,6 @@ export function deleteMenuItem(id: string) {
 }
 
 const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 /** Nhận ảnh dạng data URL (base64), lưu vào thư mục uploads, trả về đường dẫn công khai. */
 export function saveImage(dataUrl: unknown): string {

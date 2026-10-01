@@ -4,10 +4,10 @@ import { BANKS } from '../../../shared/banks.ts';
 import type { Printer, Settings, StaffTable } from '../../../shared/types.ts';
 import { api, download, run } from '../api.ts';
 import { useData } from '../context.ts';
-import { Badge, Button, Card, Field, Input, Modal, MoneyInput, NumberInput, PageHeader, Select, Table, Tabs } from '../components/ui.tsx';
+import { Badge, Button, Card, Field, Input, Modal, MoneyInput, NumberInput, PageHeader, Select, Table, Tabs, Textarea } from '../components/ui.tsx';
 import { formatDateTime } from '../dates.ts';
 
-type Tab = 'restaurant' | 'payment' | 'loyalty' | 'invoice' | 'printers' | 'tables' | 'backup';
+type Tab = 'restaurant' | 'operations' | 'payment' | 'loyalty' | 'invoice' | 'printers' | 'tables' | 'backup';
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('restaurant');
@@ -27,7 +27,7 @@ export function SettingsPage() {
       alert('Đã lưu.');
     });
 
-  const formTabs: Tab[] = ['restaurant', 'payment', 'loyalty', 'invoice'];
+  const formTabs: Tab[] = ['restaurant', 'operations', 'payment', 'loyalty', 'invoice'];
 
   return (
     <div className="max-w-4xl">
@@ -37,6 +37,7 @@ export function SettingsPage() {
         onChange={setTab}
         tabs={[
           { id: 'restaurant', label: 'Nhà hàng' },
+          { id: 'operations', label: 'Vận hành' },
           { id: 'payment', label: 'Thanh toán' },
           { id: 'loyalty', label: 'Tích điểm' },
           { id: 'invoice', label: 'Hóa đơn điện tử' },
@@ -175,6 +176,59 @@ export function SettingsPage() {
                 Tự xuất hóa đơn cho mọi bill khi thanh toán (bắt buộc với HĐĐT từ máy tính tiền)
               </label>
               <Button onClick={() => save({ invoice: draft.invoice })}>Lưu</Button>
+            </>
+          )}
+
+          {tab === 'operations' && (
+            <>
+              <p className="text-sm text-gray-600">
+                Thông số dùng hằng ngày, sửa ở đây là áp dụng ngay cho mọi máy (không cần sửa code). Giá trị ban đầu lấy từ file{' '}
+                <code>shared/config.ts</code>.
+              </p>
+              <div className="grid md:grid-cols-3 gap-3">
+                <Field label="Định lượng mặc định / 1 phần" hint="Dùng khi tạo định lượng từ thực đơn (vd 0.15 = 150g nếu nguyên liệu tính bằng kg).">
+                  <NumberInput
+                    decimal
+                    value={draft.operations.defaultPortion}
+                    onChange={(n) => setDraft({ ...draft, operations: { ...draft.operations, defaultPortion: n } })}
+                  />
+                </Field>
+                <Field label='Báo "Chỉ còn N phần" khi còn ≤' hint="Khách thấy nhãn này khi bật tự báo hết món (Kho → Dự báo bán).">
+                  <NumberInput
+                    value={draft.operations.lowStockBadge}
+                    placeholder="0 = không báo"
+                    onChange={(n) => setDraft({ ...draft, operations: { ...draft.operations, lowStockBadge: n } })}
+                  />
+                </Field>
+                <Field label="Đơn bếp bị coi là chậm sau (phút)" hint="Màn hình bếp hiện màu đỏ khi đơn chờ quá số phút này.">
+                  <NumberInput
+                    value={draft.operations.kitchenLateMinutes}
+                    onChange={(n) => setDraft({ ...draft, operations: { ...draft.operations, kitchenLateMinutes: n } })}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="Lý do gợi ý khi hủy món (mỗi dòng 1 lý do)">
+                  <Textarea
+                    rows={5}
+                    value={draft.operations.cancelReasons.join('\n')}
+                    onChange={(e) => setDraft({ ...draft, operations: { ...draft.operations, cancelReasons: e.target.value.split('\n') } })}
+                  />
+                </Field>
+                <Field label="Lý do gợi ý khi hủy hóa đơn (mỗi dòng 1 lý do)">
+                  <Textarea
+                    rows={5}
+                    value={draft.operations.voidReasons.join('\n')}
+                    onChange={(e) => setDraft({ ...draft, operations: { ...draft.operations, voidReasons: e.target.value.split('\n') } })}
+                  />
+                </Field>
+              </div>
+              <Button
+                disabled={!draft.operations.defaultPortion || !draft.operations.kitchenLateMinutes}
+                onClick={() => save({ operations: draft.operations })}
+              >
+                Lưu
+              </Button>
             </>
           )}
         </Card>

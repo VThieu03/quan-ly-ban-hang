@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatPrice, formatTime } from '../../../shared/format.ts';
 import type { MenuCategory, OrderItem, StaffTable } from '../../../shared/types.ts';
 import { api, run } from '../api.ts';
-import { useData } from '../context.ts';
+import { useData, useOperations } from '../context.ts';
 import { Button, Field, Input, Modal, Select, Textarea } from './ui.tsx';
 
 // ---------- Mở bàn ----------
@@ -174,11 +174,11 @@ export function OrderDialog({ table, onClose }: { table: StaffTable; onClose: ()
 
 // ---------- Hủy món ----------
 
-const CANCEL_REASONS = ['Khách đổi ý', 'Hết món', 'Nhầm món', 'Lên chậm'];
 
 export function CancelItemDialog({ item, onClose }: { item: OrderItem; onClose: () => void }) {
   const [quantity, setQuantity] = useState(item.quantity);
-  const [reason, setReason] = useState(CANCEL_REASONS[0]);
+  const { cancelReasons } = useOperations();
+  const [reason, setReason] = useState(cancelReasons[0] ?? '');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -218,7 +218,7 @@ export function CancelItemDialog({ item, onClose }: { item: OrderItem; onClose: 
       </Field>
       <Field label="Lý do">
         <div className="flex gap-2 flex-wrap mb-2">
-          {CANCEL_REASONS.map((r) => (
+          {cancelReasons.map((r) => (
             <button
               key={r}
               onClick={() => setReason(r)}

@@ -1,5 +1,12 @@
 import { db, randomToken } from './db.ts';
 import { bad, int, num, oneOf, str } from './http.ts';
+import {
+  DEFAULT_CANCEL_REASONS,
+  DEFAULT_KITCHEN_LATE_MINUTES,
+  DEFAULT_LOW_STOCK_BADGE,
+  DEFAULT_PORTION,
+  DEFAULT_VOID_REASONS,
+} from '../../shared/config.ts';
 import type { Secrets, Settings } from '../../shared/types.ts';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -11,6 +18,13 @@ export const DEFAULT_SETTINGS: Settings = {
   invoice: { provider: 'none', autoIssue: true, templateCode: '', series: '' },
   printing: { removeAccents: true, kitchenTickets: true, receiptOnCheckout: false },
   inventory: { autoSoldOut: false },
+  operations: {
+    defaultPortion: DEFAULT_PORTION,
+    lowStockBadge: DEFAULT_LOW_STOCK_BADGE,
+    kitchenLateMinutes: DEFAULT_KITCHEN_LATE_MINUTES,
+    cancelReasons: DEFAULT_CANCEL_REASONS,
+    voidReasons: DEFAULT_VOID_REASONS,
+  },
 };
 
 function read<T>(key: string): T | undefined {
@@ -35,7 +49,16 @@ export function getSettings(): Settings {
     invoice: { ...DEFAULT_SETTINGS.invoice, ...stored.invoice },
     printing: { ...DEFAULT_SETTINGS.printing, ...stored.printing },
     inventory: { ...DEFAULT_SETTINGS.inventory, ...stored.inventory },
+    operations: { ...DEFAULT_SETTINGS.operations, ...stored.operations },
   };
+}
+
+/** Danh sách lý do gợi ý: bỏ dòng trống / trùng, tối đa 20 dòng, mỗi dòng 100 ký tự. */
+function reasons(value: unknown): string[] {
+  if (!Array.isArray(value)) throw bad('invalid_reasons');
+  const list = value.filter((v): v is string => typeof v === 'string').map((v) => v.trim()).filter(Boolean);
+  if (list.some((v) => v.length > 100)) throw bad('invalid_reasons');
+  return [...new Set(list)].slice(0, 20);
 }
 
 export function updateSettings(input: unknown): Settings {
@@ -81,6 +104,15 @@ export function updateSettings(input: unknown): Settings {
         }
       : current.printing,
     inventory: body.inventory ? { autoSoldOut: Boolean(body.inventory.autoSoldOut) } : current.inventory,
+    operations: body.operations
+      ? {
+          defaultPortion: num(body.operations.defaultPortion, 'invalid_default_portion', { min: 0.001, max: 1000 }),
+          lowStockBadge: int(body.operations.lowStockBadge, 'invalid_low_stock_badge', { max: 999 }),
+          kitchenLateMinutes: int(body.operations.kitchenLateMinutes, 'invalid_kitchen_late', { min: 1, max: 600 }),
+          cancelReasons: reasons(body.operations.cancelReasons),
+          voidReasons: reasons(body.operations.voidReasons),
+        }
+      : current.operations,
   };
   if (next.bank.bin && !/^\d{6}$/.test(next.bank.bin)) throw bad('invalid_bank_bin');
   write('settings', next);
