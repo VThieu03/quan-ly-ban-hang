@@ -7,6 +7,7 @@ import { api, beep, eventsUrl, getToken, run, setToken, setUnauthorizedHandler }
 import type { MeInfo, PosConfig } from './api.ts';
 import { LoginScreen } from './components/LoginScreen.tsx';
 import { AppContext } from './context.ts';
+import { BannersPage } from './pages/BannersPage.tsx';
 import { BillsPage } from './pages/BillsPage.tsx';
 import { CashShiftPage } from './pages/CashShiftPage.tsx';
 import { CustomersPage } from './pages/CustomersPage.tsx';
@@ -30,6 +31,7 @@ const PAGES = [
   { id: 'customers', label: 'Khách hàng', icon: '👥', perms: ['customers'], Page: CustomersPage },
   { id: 'menu', label: 'Thực đơn', icon: '📋', perms: ['menu'], Page: MenuPage },
   { id: 'promotions', label: 'Khuyến mãi', icon: '🏷️', perms: ['promotions'], Page: PromotionsPage },
+  { id: 'banners', label: 'Banner quảng cáo', icon: '🖼️', perms: ['promotions'], Page: BannersPage },
   { id: 'inventory', label: 'Kho', icon: '📦', perms: ['inventory'], Page: InventoryPage },
   { id: 'reports', label: 'Báo cáo', icon: '📊', perms: ['reports'], Page: ReportsPage },
   { id: 'staff', label: 'Nhân viên', icon: '🧑‍💼', perms: ['staff'], Page: StaffPage },

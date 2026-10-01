@@ -16,6 +16,10 @@ export type MenuItem = {
   unit: string;
   image: string;
   available: boolean;
+  /** Món best seller: hiện trong mục "Best seller" đầu menu của khách. */
+  featured: boolean;
+  /** Số phần còn làm được theo tồn kho (null = món chưa khai báo định lượng, không theo dõi). */
+  remaining: number | null;
 };
 
 export type MenuCategory = {
@@ -31,6 +35,24 @@ export type MenuItemInput = {
   unit?: string;
   image?: string;
   available?: boolean;
+  featured?: boolean;
+};
+
+// ---------- Banner quảng cáo ----------
+
+export type BannerTarget = 'none' | 'category' | 'item';
+
+export type Banner = {
+  id: number;
+  title: LocalizedText;
+  subtitle: LocalizedText;
+  image: string;
+  targetType: BannerTarget;
+  /** id danh mục hoặc id món khi khách bấm vào banner. */
+  targetId: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  active: boolean;
 };
 
 // ---------- Đơn gọi món ----------
@@ -143,7 +165,7 @@ export type CheckoutResult = { billId: number; total: number; invoice: InvoiceIn
 
 // ---------- Hóa đơn ----------
 
-export type InvoiceStatus = 'pending' | 'issued' | 'failed';
+export type InvoiceStatus = 'pending' | 'issued' | 'failed' | 'cancelled';
 
 export type InvoiceInfo = {
   id: number;
@@ -168,6 +190,8 @@ export type BillSummary = {
   customer: { name: string; phone: string } | null;
   cashier: string | null;
   invoice: InvoiceInfo | null;
+  /** Hóa đơn đã bị hủy sau khi thanh toán (không tính doanh thu). */
+  voided: { at: string; by: string | null; reason: string } | null;
 };
 
 export type BillDetail = BillSummary & {
@@ -279,6 +303,10 @@ export type Ingredient = {
   minStock: number;
   cost: number;
   active: boolean;
+  /** Đã có lịch sử xuất nhập (khi đó không đổi đơn vị / không xóa được). */
+  hasHistory: boolean;
+  /** Số món đang dùng nguyên liệu này trong định lượng. */
+  usedInRecipes: number;
 };
 
 export type RecipeLine = { ingredientId: number; quantity: number };
@@ -293,18 +321,33 @@ export type PurchaseInput = {
 
 export type Purchase = {
   id: number;
+  supplierId: number | null;
   supplierName: string | null;
   total: number;
   note: string;
   staffName: string | null;
   createdAt: string;
-  lines: { ingredientName: string; unit: string; quantity: number; unitCost: number }[];
+  lines: { ingredientId: number; ingredientName: string; unit: string; quantity: number; unitCost: number }[];
+  voided: { at: string; by: string | null; reason: string } | null;
+  /** Lần sửa gần nhất (nếu có). */
+  edited: { at: string; by: string | null } | null;
 };
 
-export type StockMoveType = 'purchase' | 'sale' | 'adjust' | 'waste' | 'stocktake';
+export type StockMoveType =
+  | 'opening' // tồn đầu kỳ
+  | 'purchase'
+  | 'purchase_void' // hủy phiếu nhập
+  | 'purchase_edit' // sửa phiếu nhập (trả số cũ / ghi số mới)
+  | 'sale'
+  | 'void' // hoàn kho khi hủy hóa đơn
+  | 'adjust'
+  | 'waste'
+  | 'stocktake'
+  | 'cost_adjust'; // sửa giá vốn (số lượng không đổi)
 
 export type StockMove = {
   id: number;
+  ingredientId: number;
   ingredientName: string;
   unit: string;
   change: number;
@@ -356,6 +399,48 @@ export type Settings = {
   loyalty: { enabled: boolean; spendPerPoint: number; pointValue: number };
   invoice: { provider: InvoiceProviderId; autoIssue: boolean; templateCode: string; series: string };
   printing: { removeAccents: boolean; kitchenTickets: boolean; receiptOnCheckout: boolean };
+  /** autoSoldOut: tự báo "Hết món" khi không còn đủ nguyên liệu cho 1 phần, tự bật lại khi có hàng. */
+  inventory: { autoSoldOut: boolean };
+};
+
+// ---------- Dự báo tồn kho ----------
+
+export type DishForecast = {
+  menuItemId: string;
+  name: string;
+  price: number;
+  /** Giá vốn 1 phần. */
+  cost: number;
+  /** Số phần còn làm được (đã trừ món đã gọi nhưng chưa thanh toán). */
+  portions: number;
+  limitingIngredient: string | null;
+  /** Tiền bán / lãi gộp nếu bán hết số phần còn làm được (từng món tính riêng). */
+  revenue: number;
+  profit: number;
+};
+
+export type IngredientForecast = {
+  ingredientId: number;
+  name: string;
+  unit: string;
+  /** Tồn khả dụng = tồn kho − lượng đã gọi chưa thanh toán. */
+  available: number;
+  stockValue: number;
+  /** Doanh thu bình quân mang lại trên 1 đơn vị nguyên liệu. */
+  revenuePerUnit: number;
+  expectedRevenue: number;
+  basis: 'sales' | 'menu' | 'none';
+};
+
+export type InventoryForecast = {
+  days: number;
+  stockValue: number;
+  expectedRevenue: number;
+  expectedProfit: number;
+  /** Giá trị tồn của nguyên liệu chưa dùng trong định lượng nào (không ước tính được). */
+  untrackedValue: number;
+  dishes: DishForecast[];
+  ingredients: IngredientForecast[];
 };
 
 export type Secrets = { bankWebhookKey: string; printAgentKey: string };
@@ -380,6 +465,7 @@ export type ReportSummary = {
   byCategory: { categoryId: string; name: string; quantity: number; revenue: number }[];
   byStaff: { staffId: number | null; name: string; bills: number; revenue: number }[];
   cancelled: { items: number; amount: number };
+  voided: { bills: number; amount: number };
 };
 
 export type DailySummary = {

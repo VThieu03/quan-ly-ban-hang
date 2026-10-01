@@ -1,31 +1,50 @@
 import { useState } from 'react';
 import { formatPrice } from '../../../shared/format.ts';
 import { LANGS } from '../../../shared/types.ts';
-import type { Lang, LocalizedText, MenuCategory, MenuItem } from '../../../shared/types.ts';
+import type { Ingredient, Lang, LocalizedText, MenuCategory, MenuItem, RecipeLine } from '../../../shared/types.ts';
 import { api, errorText, run } from '../api.ts';
 import { useCan, useData } from '../context.ts';
 import { Button, Card, Field, Input, Modal, MoneyInput, PageHeader, Select } from '../components/ui.tsx';
+import { formatQty } from '../dates.ts';
+import { moveItem, resizeImage } from '../images.ts';
+import { RecipeDialog } from './InventoryPage.tsx';
 
 const LANG_LABELS: Record<Lang, string> = { vi: 'Tiếng Việt', en: 'English', ko: '한국어', zh: '中文', ja: '日本語' };
 const emptyText = (): LocalizedText => ({ vi: '', en: '', ko: '', zh: '', ja: '' });
 
-/** Thu nhỏ ảnh còn tối đa 800px, nén JPEG để tải nhanh trên điện thoại khách. */
-async function resizeImage(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 800 / bitmap.width);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8);
+/** Hai nút ▲▼ để đổi thứ tự. */
+function OrderButtons({ onUp, onDown }: { onUp: (() => void) | null; onDown: (() => void) | null }) {
+  const cls = 'w-7 h-7 rounded border text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent';
+  return (
+    <span className="flex gap-1 shrink-0">
+      <button className={cls} disabled={!onUp} onClick={onUp ?? undefined} title="Lên trên" aria-label="Lên trên">
+        ▲
+      </button>
+      <button className={cls} disabled={!onDown} onClick={onDown ?? undefined} title="Xuống dưới" aria-label="Xuống dưới">
+        ▼
+      </button>
+    </span>
+  );
 }
 
 export function MenuPage() {
   const can = useCan();
   const [menu, reload] = useData(api.menu);
-  const [costs] = useData(() => (can('inventory') || can('menu') ? api.menuCosts() : Promise.resolve({} as Record<string, number>)));
+  const [costs, reloadCosts] = useData(() =>
+    can('inventory') || can('menu') ? api.menuCosts() : Promise.resolve({} as Record<string, number>),
+  );
+  // Liên kết món ↔ nguyên liệu (chỉ người có quyền Kho mới xem / sửa định lượng).
+  const canStock = can('inventory');
+  const [recipes, reloadRecipes] = useData(() => (canStock ? api.recipes() : Promise.resolve({} as Record<string, RecipeLine[]>)));
+  const [ingredients] = useData(() => (canStock ? api.ingredients() : Promise.resolve([] as Ingredient[])));
+  const [recipeFor, setRecipeFor] = useState<MenuItem | null>(null);
   const [editingItem, setEditingItem] = useState<{ item: MenuItem | null; categoryId: string } | null>(null);
   const [editingCategory, setEditingCategory] = useState<MenuCategory | 'new' | null>(null);
+
+  const reorder = (ids: string[] | null, categoryId?: string) => {
+    if (ids) run(() => api.reorderMenu(ids, categoryId)).then(reload);
+  };
+  const featuredCount = menu?.flatMap((c) => c.items).filter((i) => i.featured).length ?? 0;
 
   return (
     <div className="max-w-5xl">
@@ -35,13 +54,20 @@ export function MenuPage() {
         </Button>
       </PageHeader>
       <p className="text-gray-500 mb-4">
-        Bấm công tắc để báo <b>hết món</b> — khách sẽ không gọi được. Giá vốn lấy từ định lượng trong mục Kho.
+        Bấm công tắc để báo <b>hết món</b> — khách sẽ không gọi được. Bấm <b>⭐</b> để đưa món vào mục <b>Best seller</b> ở đầu
+        menu của khách ({featuredCount} món). Dùng ▲▼ để đổi thứ tự hiển thị. Giá vốn lấy từ định lượng trong mục Kho.
       </p>
       <div className="space-y-6">
-        {menu?.map((category) => (
+        {menu?.map((category, ci) => (
           <Card key={category.id}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold">{category.title.vi}</h2>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="flex items-center gap-3">
+                <OrderButtons
+                  onUp={ci > 0 ? () => reorder(moveItem(menu.map((c) => c.id), ci, -1)) : null}
+                  onDown={ci < menu.length - 1 ? () => reorder(moveItem(menu.map((c) => c.id), ci, 1)) : null}
+                />
+                <h2 className="text-xl font-bold">{category.title.vi}</h2>
+              </div>
               <div className="flex gap-2">
                 <Button variant="ghost" className="text-sm" onClick={() => setEditingCategory(category)}>
                   Sửa danh mục
@@ -52,16 +78,38 @@ export function MenuPage() {
               </div>
             </div>
             <ul className="divide-y">
-              {category.items.map((item) => {
+              {category.items.map((item, ii) => {
                 const cost = costs?.[item.id];
+                const ids = category.items.map((i) => i.id);
                 return (
                   <li key={item.id} className="flex items-center gap-3 py-2">
+                    <OrderButtons
+                      onUp={ii > 0 ? () => reorder(moveItem(ids, ii, -1), category.id) : null}
+                      onDown={ii < ids.length - 1 ? () => reorder(moveItem(ids, ii, 1), category.id) : null}
+                    />
                     <img src={item.image || undefined} alt="" className="w-14 h-14 rounded-lg object-cover bg-gray-200 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className={`font-semibold ${item.available ? '' : 'text-gray-400 line-through'}`}>{item.name.vi}</div>
                       <div className="text-sm text-gray-500 truncate">
                         {item.name.en} · {item.unit}
                       </div>
+                      {canStock && (
+                        <div className="text-xs truncate">
+                          {recipes?.[item.id]?.length ? (
+                            <span className="text-gray-600">
+                              🥩{' '}
+                              {recipes[item.id]
+                                .map((l) => {
+                                  const ing = ingredients?.find((x) => x.id === l.ingredientId);
+                                  return `${formatQty(l.quantity)} ${ing?.unit ?? ''} ${ing?.name ?? '?'}`;
+                                })
+                                .join(' + ')}
+                            </span>
+                          ) : (
+                            <span className="text-amber-700">Chưa liên kết nguyên liệu</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-red-600">{formatPrice(item.price)}</div>
@@ -70,7 +118,19 @@ export function MenuPage() {
                           Vốn {formatPrice(cost)} · lãi {item.price ? Math.round(((item.price - cost) / item.price) * 100) : 0}%
                         </div>
                       )}
+                      {item.remaining !== null && (
+                        <div className={`text-xs ${item.remaining === 0 ? 'text-red-600 font-semibold' : item.remaining <= 5 ? 'text-amber-700' : 'text-gray-500'}`}>
+                          {item.remaining === 0 ? 'Hết nguyên liệu' : `Còn làm được ${item.remaining} phần`}
+                        </div>
+                      )}
                     </div>
+                    <button
+                      onClick={() => run(() => api.updateMenuItem(item.id, { featured: !item.featured })).then(reload)}
+                      title={item.featured ? 'Bỏ khỏi Best seller' : 'Đưa vào Best seller'}
+                      className={`text-2xl leading-none px-1 ${item.featured ? '' : 'grayscale opacity-30 hover:opacity-70'}`}
+                    >
+                      ⭐
+                    </button>
                     <label className="flex items-center gap-2 cursor-pointer select-none w-24 justify-end">
                       <span className={`text-sm ${item.available ? 'text-green-700' : 'text-red-600'}`}>
                         {item.available ? 'Còn' : 'Hết'}
@@ -82,6 +142,11 @@ export function MenuPage() {
                         className="w-5 h-5 accent-green-600"
                       />
                     </label>
+                    {canStock && (
+                      <Button variant="ghost" className="text-sm px-2" onClick={() => setRecipeFor(item)}>
+                        Nguyên liệu
+                      </Button>
+                    )}
                     <Button variant="ghost" className="text-sm px-2" onClick={() => setEditingItem({ item, categoryId: category.id })}>
                       Sửa
                     </Button>
@@ -100,6 +165,20 @@ export function MenuPage() {
           onClose={() => setEditingItem(null)}
           onSaved={() => {
             setEditingItem(null);
+            reload();
+          }}
+        />
+      )}
+      {recipeFor && ingredients && (
+        <RecipeDialog
+          item={recipeFor}
+          lines={recipes?.[recipeFor.id] ?? []}
+          ingredients={ingredients}
+          onClose={() => setRecipeFor(null)}
+          onSaved={() => {
+            setRecipeFor(null);
+            reloadRecipes();
+            reloadCosts();
             reload();
           }}
         />
@@ -154,6 +233,7 @@ function ItemDialog({
     unit: item?.unit ?? 'Phần',
     image: item?.image ?? '',
     available: item?.available ?? true,
+    featured: item?.featured ?? false,
   });
   const [uploading, setUploading] = useState(false);
 
@@ -220,6 +300,10 @@ function ItemDialog({
               <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
             </Field>
           </div>
+          <label className="flex items-center gap-2 font-semibold">
+            <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} />
+            ⭐ Best seller (hiện trong mục Best seller đầu menu của khách)
+          </label>
         </div>
         <div className="space-y-2">
           <div className="aspect-4/3 bg-gray-100 rounded-xl overflow-hidden">

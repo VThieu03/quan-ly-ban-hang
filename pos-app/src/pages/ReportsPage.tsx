@@ -48,7 +48,11 @@ export function ReportsPage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Stat label="Hóa đơn" value={report.bills.toLocaleString('vi-VN')} />
+        <Stat
+          label="Hóa đơn"
+          value={report.bills.toLocaleString('vi-VN')}
+          sub={report.voided.bills ? `${report.voided.bills} HĐ đã hủy (${formatPrice(report.voided.amount)}) không tính` : undefined}
+        />
         <Stat label="TB / hóa đơn" value={formatPrice(report.averageBill)} />
         <Stat label="Lượt khách" value={report.guests.toLocaleString('vi-VN')} sub="theo số khách lúc mở bàn" />
         <Stat label="Giá vốn" value={formatPrice(report.cogs)} sub="món đã khai báo định lượng" />

@@ -95,7 +95,7 @@ Nhớ bật sao lưu / snapshot của nhà cung cấp VPS và định kỳ tải
 | `TRUST_PROXY`    | (tắt)                     | Đặt `loopback` / `true` khi chạy sau Caddy / nginx để chống dò PIN theo đúng IP. |
 | `TABLE_COUNT`    | `10`                      | Số bàn tạo lần đầu.                                                            |
 | `DB_PATH`        | `server/data/app.db`      | File database.                                                                 |
-| `BACKUP_DIR`     | `server/data/backups/`    | Nơi lưu bản sao lưu tự động (mỗi ngày, giữ 30 bản; `BACKUP=off` để tắt).       |
+| `BACKUP_DIR`     | `<thư mục database>/backups/` | Nơi lưu bản sao lưu tự động (mỗi ngày, giữ 30 bản; `BACKUP=off` để tắt).       |
 
 ## Kết nối bên ngoài
 

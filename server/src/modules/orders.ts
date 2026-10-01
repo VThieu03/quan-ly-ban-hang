@@ -1,5 +1,7 @@
 import { db, now, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
+import { getSettings } from '../settings.ts';
+import { portionsByItem } from './availability.ts';
 import { findMenuItem } from './menu.ts';
 import { enqueueKitchenTickets } from './printing.ts';
 import type { NewOrderRequest, Order, OrderStatus } from '../../../shared/types.ts';
@@ -119,11 +121,15 @@ export function createOrder(
     quantities.set(line.menuItemId, (quantities.get(line.menuItemId) ?? 0) + line.quantity);
   }
 
+  // Đang bật tự báo hết món: không cho gọi quá số phần nguyên liệu còn làm được.
+  const portions = getSettings().inventory.autoSoldOut ? portionsByItem() : null;
   const lines = [...quantities].map(([id, quantity]) => {
     const row = findMenuItem(id);
     if (!row) throw new HttpError(400, 'invalid_items', id);
     if (row.available !== 1) throw new HttpError(409, 'item_unavailable', id);
     if (quantity > MAX_QUANTITY) throw new HttpError(400, 'invalid_items', id);
+    const left = portions?.get(id);
+    if (left && quantity > left.portions) throw new HttpError(409, left.portions > 0 ? 'insufficient_stock' : 'item_unavailable', id);
     return { row, quantity };
   });
 

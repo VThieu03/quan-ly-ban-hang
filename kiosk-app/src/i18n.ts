@@ -18,6 +18,17 @@ export const texts = {
   orderBtn: { vi: 'Gọi món', en: 'Place order', ko: '주문하기', zh: '下单', ja: '注文する' },
   sending: { vi: 'Đang gửi...', en: 'Sending...', ko: '전송 중...', zh: '发送中...', ja: '送信中...' },
   soldOut: { vi: 'Hết món', en: 'Sold out', ko: '품절', zh: '已售罄', ja: '売り切れ' },
+  bestSeller: { vi: '⭐ Best seller', en: '⭐ Best sellers', ko: '⭐ 인기 메뉴', zh: '⭐ 热销', ja: '⭐ 人気メニュー' },
+  bestBadge: { vi: 'Bán chạy', en: 'Best seller', ko: '인기', zh: '热销', ja: '人気' },
+  /** {n} = số phần còn lại. */
+  onlyLeft: { vi: 'Chỉ còn {n} phần', en: 'Only {n} left', ko: '{n}개 남음', zh: '仅剩{n}份', ja: '残り{n}食' },
+  errorInsufficient: {
+    vi: 'Có món không còn đủ số lượng bạn chọn, vui lòng giảm bớt.',
+    en: 'Some items do not have enough left for your quantity. Please reduce it.',
+    ko: '선택하신 수량만큼 남지 않은 메뉴가 있습니다. 수량을 줄여 주세요.',
+    zh: '部分菜品数量不足，请减少数量。',
+    ja: '一部の商品は在庫が足りません。数量を減らしてください。',
+  },
   successTitle: { vi: 'Đã gửi vào Bếp!', en: 'Sent to Kitchen!', ko: '주방으로 전송되었습니다!', zh: '已发送至厨房！', ja: '厨房に送信されました！' },
   successDesc: {
     vi: 'Món ăn của bạn đang được chuẩn bị. Vui lòng đợi trong giây lát.',

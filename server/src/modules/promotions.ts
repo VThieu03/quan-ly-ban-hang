@@ -81,6 +81,12 @@ export function updatePromotion(id: number, body: Record<string, unknown>) {
   if (result.changes === 0) throw new HttpError(404, 'not_found');
 }
 
+/** Xóa mã; hóa đơn đã dùng mã vẫn giữ ghi chú "Mã ..." và số tiền giảm. */
+export function deletePromotion(id: number) {
+  db.prepare('UPDATE sessions SET promotion_id = NULL WHERE promotion_id = ?').run(id);
+  db.prepare('DELETE FROM promotions WHERE id = ?').run(id);
+}
+
 /** Kiểm tra mã giảm giá cho một hóa đơn, trả về số tiền được giảm. */
 export function applyVoucher(codeInput: string, subtotal: number): { promotion: Promotion; discount: number } {
   const row = db.prepare('SELECT * FROM promotions WHERE code = ?').get(codeInput.trim().toUpperCase()) as

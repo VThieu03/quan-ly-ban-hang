@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { broadcast } from '../events.ts';
+import { afterStockChange } from '../modules/availability.ts';
 import { dateRange, int } from '../http.ts';
 import {
   billDetail,
@@ -12,8 +13,9 @@ import {
   prepareTransfer,
   printProvisionalBill,
   reprintBill,
+  voidBill,
 } from '../modules/checkout.ts';
-import { createCustomer, listCustomers, lookupCustomer, updateCustomer } from '../modules/customers.ts';
+import { createCustomer, deleteCustomer, listCustomers, lookupCustomer, updateCustomer } from '../modules/customers.ts';
 import { getMenu } from '../modules/menu.ts';
 import { cancelOrderItem, createOrder, getKitchenOrders, moveItems, updateOrderStatus } from '../modules/orders.ts';
 import { createReservation, listReservations, updateReservation } from '../modules/reservations.ts';
@@ -47,6 +49,7 @@ operationsRouter.post('/tables/:id/orders', need('tables'), (req, res) => {
   const id = idParam(req);
   const order = createOrder(id, req.body, { source: 'staff', staffId: me(res).id });
   broadcast({ type: 'table', tableId: id });
+  afterStockChange();
   res.status(201).json(order);
 });
 
@@ -92,12 +95,14 @@ operationsRouter.get('/kitchen', need('kitchen'), (_req, res) => {
 operationsRouter.patch('/orders/:id', need('kitchen', 'tables'), (req, res) => {
   const tableId = updateOrderStatus(idParam(req), req.body?.status);
   broadcast({ type: 'table', tableId });
+  afterStockChange();
   res.status(204).end();
 });
 
 operationsRouter.post('/order-items/:id/cancel', need('tables'), (req, res) => {
   const tableId = cancelOrderItem(idParam(req), req.body ?? {}, me(res).id);
   broadcast({ type: 'table', tableId });
+  afterStockChange();
   res.status(204).end();
 });
 
@@ -126,6 +131,7 @@ operationsRouter.post('/tables/:id/checkout', need('checkout'), async (req, res)
   const result = await checkout(id, parseCheckoutRequest(req.body), me(res).id);
   broadcast({ type: 'table', tableId: id });
   broadcast({ type: 'data' });
+  afterStockChange();
   res.json(result);
 });
 
@@ -149,6 +155,13 @@ operationsRouter.post('/bills/:id/invoice', need('bills'), async (req, res) => {
   res.json(await issueBillInvoice(idParam(req), req.body?.buyer));
 });
 
+operationsRouter.post('/bills/:id/void', need('voidBills'), async (req, res) => {
+  const bill = await voidBill(idParam(req), req.body?.reason, me(res).id);
+  broadcast({ type: 'data' });
+  afterStockChange();
+  res.json(bill);
+});
+
 // ---------- Khách hàng ----------
 
 operationsRouter.get('/customers', need('customers'), (req, res) => {
@@ -166,6 +179,11 @@ operationsRouter.post('/customers', need('customers'), (req, res) => {
 
 operationsRouter.patch('/customers/:id', need('customers'), (req, res) => {
   updateCustomer(idParam(req), req.body ?? {});
+  res.status(204).end();
+});
+
+operationsRouter.delete('/customers/:id', need('customers'), (req, res) => {
+  deleteCustomer(idParam(req));
   res.status(204).end();
 });
 

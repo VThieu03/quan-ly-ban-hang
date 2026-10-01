@@ -4,7 +4,7 @@ import { BANKS } from '../../../shared/banks.ts';
 import type { Printer, Settings, StaffTable } from '../../../shared/types.ts';
 import { api, download, run } from '../api.ts';
 import { useData } from '../context.ts';
-import { Badge, Button, Card, Field, Input, Modal, MoneyInput, PageHeader, Select, Table, Tabs } from '../components/ui.tsx';
+import { Badge, Button, Card, Field, Input, Modal, MoneyInput, NumberInput, PageHeader, Select, Table, Tabs } from '../components/ui.tsx';
 import { formatDateTime } from '../dates.ts';
 
 type Tab = 'restaurant' | 'payment' | 'loyalty' | 'invoice' | 'printers' | 'tables' | 'backup';
@@ -92,7 +92,7 @@ export function SettingsPage() {
                 </Field>
               </div>
               <Field label="Thuế suất GTGT đã gồm trong giá bán (%)" hint="Dịch vụ ăn uống hiện thường là 8% (đang giảm 2%). Hỏi kế toán để đặt đúng.">
-                <Input type="number" min={0} max={20} step="0.5" className="w-32" value={draft.vatRate} onChange={(e) => setDraft({ ...draft, vatRate: Number(e.target.value) })} />
+                <NumberInput decimal className="w-32" value={draft.vatRate} placeholder="0" onChange={(n) => setDraft({ ...draft, vatRate: n })} />
               </Field>
               <Button onClick={() => save({ bank: draft.bank, vatRate: draft.vatRate })}>Lưu</Button>
 

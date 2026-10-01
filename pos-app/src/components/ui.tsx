@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 import { shiftDate, today } from '../dates.ts';
@@ -20,19 +20,119 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea rows={2} {...props} className={`${inputCls} resize-none ${props.className ?? ''}`} />;
 }
 
-/** Ô nhập số tiền: hiển thị có dấu chấm ngăn cách, trả về số nguyên. */
+/**
+ * Bấm vào ô thì chọn sẵn số cũ để gõ đè (chỉ khi người dùng chưa tự chọn / chưa kịp gõ gì).
+ * Nội dung ô không đổi lúc bấm vào nên vùng chọn của trình duyệt (bấm đúp, bấm 3 lần, kéo chọn) vẫn giữ.
+ */
+function selectOnFocus(input: HTMLInputElement) {
+  const before = input.value;
+  requestAnimationFrame(() => {
+    if (document.activeElement === input && input.value === before && input.selectionStart === input.selectionEnd) {
+      input.select();
+    }
+  });
+}
+
+const formatMoney = (n: number) => Math.round(n).toLocaleString('vi-VN');
+
+/**
+ * Ô nhập số tiền, hiện dạng 115.000 cả khi đang gõ, trả về số nguyên.
+ * Sau mỗi phím, con trỏ được đặt lại đúng vị trí theo số chữ số đứng trước nó; nếu không,
+ * dấu chấm tự chèn vào sẽ làm con trỏ lệch và số bị đảo (vd gõ 115000 thành 111500).
+ */
 export function MoneyInput({
   value,
   onChange,
+  onFocus,
+  onBlur,
   ...props
 }: { value: number; onChange: (value: number) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const ref = useRef<HTMLInputElement>(null);
+  /** Số chữ số đứng trước con trỏ sau lần gõ gần nhất (để đặt lại con trỏ sau khi định dạng). */
+  const digitsBeforeCaret = useRef<number | null>(null);
+  // Gõ "0" thì vẫn hiện 0 (giá trị 0 bình thường hiện ô trống).
+  const [showZero, setShowZero] = useState(false);
+  const display = value ? formatMoney(value) : showZero ? '0' : '';
+
+  useLayoutEffect(() => {
+    const input = ref.current;
+    const wanted = digitsBeforeCaret.current;
+    if (!input || wanted === null || document.activeElement !== input) return;
+    digitsBeforeCaret.current = null;
+    let pos = 0;
+    for (let seen = 0; pos < display.length && seen < wanted; pos++) if (/\d/.test(display[pos])) seen++;
+    input.setSelectionRange(pos, pos);
+  });
+
   return (
     <input
+      ref={ref}
+      type="text"
       inputMode="numeric"
+      autoComplete="off"
       {...props}
-      value={value ? value.toLocaleString('vi-VN') : ''}
-      onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '')) || 0)}
-      className={`${inputCls} text-right ${props.className ?? ''}`}
+      value={display}
+      onFocus={(e) => {
+        selectOnFocus(e.currentTarget);
+        onFocus?.(e);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        const caret = e.target.selectionStart ?? raw.length;
+        const digits = raw.replace(/\D/g, '');
+        // Bỏ số 0 thừa ở đầu (05 → 5) để con trỏ không lệch.
+        const leadingZeros = digits.length - (digits.replace(/^0+(?=\d)/, '').length);
+        digitsBeforeCaret.current = Math.max(0, raw.slice(0, caret).replace(/\D/g, '').length - leadingZeros);
+        setShowZero(digits !== '' && Number(digits) === 0);
+        onChange(Number(digits) || 0);
+      }}
+      onBlur={(e) => {
+        setShowZero(false);
+        onBlur?.(e);
+      }}
+      className={`${inputCls} text-right tabular-nums ${props.className ?? ''}`}
+    />
+  );
+}
+
+/**
+ * Ô nhập số (số nguyên hoặc thập phân, chấp nhận cả dấu phẩy). Giữ nguyên chữ đang gõ cho tới khi rời ô,
+ * nên xóa trống để gõ lại được và gõ được "1." / "0,5" mà không bị tự sửa.
+ */
+export function NumberInput({
+  value,
+  onChange,
+  decimal = false,
+  onFocus,
+  onBlur,
+  ...props
+}: { value: number; onChange: (value: number) => void; decimal?: boolean } & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'value' | 'onChange' | 'type'
+>) {
+  const [typing, setTyping] = useState<string | null>(null);
+  return (
+    <input
+      type="text"
+      inputMode={decimal ? 'decimal' : 'numeric'}
+      autoComplete="off"
+      {...props}
+      value={typing ?? (value ? String(value) : '')}
+      onFocus={(e) => {
+        selectOnFocus(e.currentTarget);
+        onFocus?.(e);
+      }}
+      onChange={(e) => {
+        let text = e.target.value.replace(',', '.');
+        text = decimal ? text.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') : text.replace(/\D/g, '');
+        setTyping(text);
+        onChange(Number(text) || 0);
+      }}
+      onBlur={(e) => {
+        setTyping(null);
+        onBlur?.(e);
+      }}
+      className={`${inputCls} text-right tabular-nums ${props.className ?? ''}`}
     />
   );
 }

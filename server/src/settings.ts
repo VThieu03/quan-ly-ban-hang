@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   loyalty: { enabled: true, spendPerPoint: 10_000, pointValue: 1_000 },
   invoice: { provider: 'none', autoIssue: true, templateCode: '', series: '' },
   printing: { removeAccents: true, kitchenTickets: true, receiptOnCheckout: false },
+  inventory: { autoSoldOut: false },
 };
 
 function read<T>(key: string): T | undefined {
@@ -33,6 +34,7 @@ export function getSettings(): Settings {
     loyalty: { ...DEFAULT_SETTINGS.loyalty, ...stored.loyalty },
     invoice: { ...DEFAULT_SETTINGS.invoice, ...stored.invoice },
     printing: { ...DEFAULT_SETTINGS.printing, ...stored.printing },
+    inventory: { ...DEFAULT_SETTINGS.inventory, ...stored.inventory },
   };
 }
 
@@ -78,6 +80,7 @@ export function updateSettings(input: unknown): Settings {
           receiptOnCheckout: Boolean(body.printing.receiptOnCheckout),
         }
       : current.printing,
+    inventory: body.inventory ? { autoSoldOut: Boolean(body.inventory.autoSoldOut) } : current.inventory,
   };
   if (next.bank.bin && !/^\d{6}$/.test(next.bank.bin)) throw bad('invalid_bank_bin');
   write('settings', next);

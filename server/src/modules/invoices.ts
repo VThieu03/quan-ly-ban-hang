@@ -27,14 +27,19 @@ type IssueResult = { invoiceNo: string; lookupCode: string; lookupUrl: string | 
 
 interface InvoiceProvider {
   issue(payload: InvoicePayload): Promise<IssueResult>;
+  /** Hủy hóa đơn đã phát hành (khi hủy bill). Không có thì phải hủy tay trên trang nhà cung cấp. */
+  cancel?(invoiceNo: string, reason: string): Promise<void>;
 }
 
 /** Nhà cung cấp giả lập để chạy thử quy trình, KHÔNG gửi lên cơ quan thuế. */
 const mockProvider: InvoiceProvider = {
   async issue() {
-    const { count } = db.prepare("SELECT COUNT(*) AS count FROM invoices WHERE status = 'issued'").get() as { count: number };
+    const { count } = db.prepare("SELECT COUNT(*) AS count FROM invoices WHERE invoice_no IS NOT NULL").get() as {
+      count: number;
+    };
     return { invoiceNo: `TEST-${String(count + 1).padStart(7, '0')}`, lookupCode: randomToken(6).toUpperCase(), lookupUrl: null };
   },
+  async cancel() {},
 };
 
 const PROVIDERS: Record<Exclude<InvoiceProviderId, 'none'>, InvoiceProvider> = {
@@ -83,7 +88,7 @@ export function createInvoice(payload: InvoicePayload): number | null {
 export async function issueInvoice(invoiceId: number): Promise<InvoiceInfo> {
   const row = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId) as InvoiceRow | undefined;
   if (!row) throw new HttpError(404, 'not_found');
-  if (row.status === 'issued') return toInvoiceInfo(row);
+  if (row.status === 'issued' || row.status === 'cancelled') return toInvoiceInfo(row);
   const provider = PROVIDERS[row.provider as keyof typeof PROVIDERS];
   try {
     if (!provider) throw new Error(`Chưa cài đặt nhà cung cấp "${row.provider}"`);
@@ -117,6 +122,30 @@ export function updateInvoiceBuyer(invoiceId: number, buyer: InvoiceBuyer | null
   if (row.status === 'issued') throw new HttpError(409, 'invoice_already_issued');
   const payload = { ...(JSON.parse(row.payload) as InvoicePayload), buyer };
   db.prepare('UPDATE invoices SET buyer = ?, payload = ? WHERE id = ?').run(JSON.stringify(buyer), JSON.stringify(payload), invoiceId);
+}
+
+/**
+ * Hủy hóa đơn điện tử của một bill bị hủy. Hóa đơn chưa phát hành thì chỉ đánh dấu hủy (không gửi nữa);
+ * đã phát hành thì gọi nhà cung cấp hủy, lỗi thì ghi lại để xử lý tay.
+ */
+export async function cancelInvoiceForSession(sessionId: number, reason: string) {
+  const row = db.prepare('SELECT * FROM invoices WHERE session_id = ?').get(sessionId) as InvoiceRow | undefined;
+  if (!row || row.status === 'cancelled') return;
+  if (row.status !== 'issued') {
+    db.prepare("UPDATE invoices SET status = 'cancelled', error = '' WHERE id = ?").run(row.id);
+    return;
+  }
+  const provider = PROVIDERS[row.provider as keyof typeof PROVIDERS];
+  try {
+    if (!provider?.cancel) throw new Error('Nhà cung cấp chưa hỗ trợ hủy tự động, hãy hủy trên trang của nhà cung cấp');
+    await provider.cancel(row.invoice_no!, reason);
+    db.prepare("UPDATE invoices SET status = 'cancelled', error = '' WHERE id = ?").run(row.id);
+  } catch (err) {
+    db.prepare('UPDATE invoices SET error = ? WHERE id = ?').run(
+      `Hủy HĐĐT lỗi: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300),
+      row.id,
+    );
+  }
 }
 
 /** Gửi lại các hóa đơn lỗi / còn chờ (chạy định kỳ). */

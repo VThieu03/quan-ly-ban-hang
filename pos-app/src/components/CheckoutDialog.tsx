@@ -6,7 +6,7 @@ import type { CheckoutBreakdown, CheckoutRequest, CheckoutResult, Customer, Paym
 import { api, errorText, paymentLabels } from '../api.ts';
 import type { TransferInfo } from '../api.ts';
 import { useApp } from '../context.ts';
-import { Badge, Button, Field, Input, Modal, MoneyInput } from './ui.tsx';
+import { Badge, Button, Field, Input, Modal, MoneyInput, NumberInput } from './ui.tsx';
 
 type Props = { table: StaffTable; onClose: () => void };
 
@@ -243,12 +243,9 @@ export function CheckoutDialog({ table, onClose }: Props) {
             {customer && customer.points > 0 && config?.loyalty.enabled && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-sm whitespace-nowrap">Dùng điểm:</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={customer.points}
-                  value={usePoints || ''}
-                  onChange={(e) => setUsePoints(Math.min(customer.points, Math.max(0, Number(e.target.value) || 0)))}
+                <NumberInput
+                  value={usePoints}
+                  onChange={(n) => setUsePoints(Math.min(customer.points, Math.max(0, n)))}
                   className="w-28"
                 />
                 <Button variant="ghost" className="text-sm" onClick={() => setUsePoints(customer.points)}>

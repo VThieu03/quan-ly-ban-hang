@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dataDir, db, randomToken, transaction } from '../db.ts';
 import { bad, HttpError, int, str } from '../http.ts';
+import { portionsByItem } from './availability.ts';
 import { LANGS } from '../../../shared/types.ts';
 import type { LocalizedText, MenuCategory, MenuItem } from '../../../shared/types.ts';
 
@@ -15,9 +16,10 @@ type MenuItemRow = {
   unit: string;
   image: string;
   available: number;
+  featured: number;
 };
 
-export function toMenuItem(row: MenuItemRow): MenuItem {
+export function toMenuItem(row: MenuItemRow, remaining: number | null = null): MenuItem {
   return {
     id: row.id,
     categoryId: row.category_id,
@@ -26,6 +28,8 @@ export function toMenuItem(row: MenuItemRow): MenuItem {
     unit: row.unit,
     image: row.image,
     available: row.available === 1,
+    featured: row.featured === 1,
+    remaining,
   };
 }
 
@@ -38,7 +42,10 @@ export function getMenu(): MenuCategory[] {
     id: string;
     title: string;
   }[];
-  const items = (db.prepare('SELECT * FROM menu_items ORDER BY sort').all() as MenuItemRow[]).map(toMenuItem);
+  const portions = portionsByItem();
+  const items = (db.prepare('SELECT * FROM menu_items ORDER BY sort').all() as MenuItemRow[]).map((row) =>
+    toMenuItem(row, portions.get(row.id)?.portions ?? null),
+  );
   return categories.map((c) => ({
     id: c.id,
     title: JSON.parse(c.title),
@@ -94,7 +101,7 @@ export function createMenuItem(input: Record<string, unknown>) {
     .prepare('SELECT COALESCE(MAX(sort), -1) + 1 AS sort FROM menu_items WHERE category_id = ?')
     .get(categoryId) as { sort: number };
   db.prepare(
-    'INSERT INTO menu_items (id, category_id, name, price, unit, image, available, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO menu_items (id, category_id, name, price, unit, image, available, featured, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(
     id,
     categoryId,
@@ -103,6 +110,7 @@ export function createMenuItem(input: Record<string, unknown>) {
     str(input.unit, 'invalid_unit', { max: 20, required: false }) || 'Phần',
     str(input.image, 'invalid_image', { max: 300, required: false }),
     input.available === false ? 0 : 1,
+    input.featured ? 1 : 0,
     sort,
   );
   return id;
@@ -112,7 +120,7 @@ export function updateMenuItem(id: string, patch: Record<string, unknown>) {
   const row = findMenuItem(id);
   if (!row) throw new HttpError(404, 'not_found');
   db.prepare(
-    'UPDATE menu_items SET category_id = ?, name = ?, price = ?, unit = ?, image = ?, available = ? WHERE id = ?',
+    'UPDATE menu_items SET category_id = ?, name = ?, price = ?, unit = ?, image = ?, available = ?, featured = ? WHERE id = ?',
   ).run(
     patch.categoryId !== undefined ? requireCategory(patch.categoryId) : row.category_id,
     patch.name !== undefined ? JSON.stringify(localized(patch.name, 'invalid_name')) : row.name,
@@ -120,8 +128,26 @@ export function updateMenuItem(id: string, patch: Record<string, unknown>) {
     patch.unit !== undefined ? str(patch.unit, 'invalid_unit', { max: 20 }) : row.unit,
     patch.image !== undefined ? str(patch.image, 'invalid_image', { max: 300, required: false }) : row.image,
     patch.available !== undefined ? (patch.available ? 1 : 0) : row.available,
+    patch.featured !== undefined ? (patch.featured ? 1 : 0) : row.featured,
     id,
   );
+  // Nhân viên tự bật/tắt món thì món không còn do hệ thống quản lý "hết món" nữa.
+  if (patch.available !== undefined) db.prepare('UPDATE menu_items SET auto_sold_out = 0 WHERE id = ?').run(id);
+}
+
+/** Sắp xếp lại danh mục (ids theo thứ tự mới). */
+export function reorderCategories(ids: unknown) {
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) throw bad('invalid_order');
+  const update = db.prepare('UPDATE categories SET sort = ? WHERE id = ?');
+  transaction(() => (ids as string[]).forEach((id, i) => update.run(i, id)));
+}
+
+/** Sắp xếp lại các món trong một danh mục (ids theo thứ tự mới). */
+export function reorderItems(categoryId: unknown, ids: unknown) {
+  const category = requireCategory(categoryId);
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) throw bad('invalid_order');
+  const update = db.prepare('UPDATE menu_items SET sort = ? WHERE id = ? AND category_id = ?');
+  transaction(() => (ids as string[]).forEach((id, i) => update.run(i, id, category)));
 }
 
 export function deleteMenuItem(id: string) {

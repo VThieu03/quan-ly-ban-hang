@@ -1,4 +1,5 @@
 import type {
+  Banner,
   BillDetail,
   BillSummary,
   CashShift,
@@ -8,6 +9,7 @@ import type {
   Customer,
   DailySummary,
   Ingredient,
+  InventoryForecast,
   InvoiceBuyer,
   InvoiceInfo,
   MenuCategory,
@@ -91,6 +93,7 @@ export type PosConfig = {
   loyalty: Settings['loyalty'];
   bankConfigured: boolean;
   invoiceEnabled: boolean;
+  autoSoldOut: boolean;
 };
 
 export type MeInfo = { staff: StaffMember; timesheet: Timesheet | null; cashShift: CashShift | null };
@@ -156,6 +159,7 @@ export const api = {
   issueInvoice: (id: number, buyer?: InvoiceBuyer | null) =>
     request<InvoiceInfo>(`/bills/${id}/invoice`, 'POST', buyer === undefined ? {} : { buyer }),
   retryInvoices: () => request<{ retried: number }>('/invoices/retry', 'POST'),
+  voidBill: (id: number, reason: string) => request<BillDetail>(`/bills/${id}/void`, 'POST', { reason }),
 
   // Khách hàng
   customers: (search = '') => request<Customer[]>(`/customers${q({ q: search })}`),
@@ -163,6 +167,7 @@ export const api = {
   createCustomer: (body: { phone: string; name: string; note: string }) => request<void>('/customers', 'POST', body),
   updateCustomer: (id: number, body: Partial<Pick<Customer, 'name' | 'note' | 'points'>>) =>
     request<void>(`/customers/${id}`, 'PATCH', body),
+  deleteCustomer: (id: number) => request<void>(`/customers/${id}`, 'DELETE'),
 
   // Đặt bàn
   reservations: (from: string, to: string) => request<Reservation[]>(`/reservations${q({ from, to })}`),
@@ -184,27 +189,45 @@ export const api = {
   updateMenuItem: (id: string, patch: unknown) => request<void>(`/menu/items/${encodeURIComponent(id)}`, 'PATCH', patch),
   deleteMenuItem: (id: string) => request<void>(`/menu/items/${encodeURIComponent(id)}`, 'DELETE'),
   uploadImage: (dataUrl: string) => request<{ url: string }>('/menu/images', 'POST', { dataUrl }),
+  /** Sắp xếp danh mục (không truyền categoryId) hoặc các món trong một danh mục. */
+  reorderMenu: (ids: string[], categoryId?: string) => request<void>('/menu/reorder', 'POST', { ids, categoryId }),
+
+  // Banner quảng cáo
+  banners: () => request<Banner[]>('/banners'),
+  createBanner: (body: unknown) => request<void>('/banners', 'POST', body),
+  updateBanner: (id: number, body: unknown) => request<void>(`/banners/${id}`, 'PUT', body),
+  deleteBanner: (id: number) => request<void>(`/banners/${id}`, 'DELETE'),
+  reorderBanners: (ids: number[]) => request<void>('/banners/reorder', 'POST', { ids }),
 
   // Khuyến mãi
   promotions: () => request<Promotion[]>('/promotions'),
   createPromotion: (body: unknown) => request<void>('/promotions', 'POST', body),
   updatePromotion: (id: number, body: unknown) => request<void>(`/promotions/${id}`, 'PATCH', body),
+  deletePromotion: (id: number) => request<void>(`/promotions/${id}`, 'DELETE'),
 
   // Kho
   ingredients: () => request<Ingredient[]>('/inventory/ingredients'),
   createIngredient: (body: unknown) => request<void>('/inventory/ingredients', 'POST', body),
   updateIngredient: (id: number, body: unknown) => request<void>(`/inventory/ingredients/${id}`, 'PATCH', body),
+  deleteIngredient: (id: number) => request<void>(`/inventory/ingredients/${id}`, 'DELETE'),
+  updatePurchase: (id: number, body: unknown) => request<void>(`/inventory/purchases/${id}`, 'PUT', body),
+  voidPurchase: (id: number, reason: string) => request<void>(`/inventory/purchases/${id}/void`, 'POST', { reason }),
   recipes: () => request<Record<string, RecipeLine[]>>('/inventory/recipes'),
+  setIngredientCosts: (lines: { ingredientId: number; cost: number }[]) => request<void>('/inventory/costs', 'POST', { lines }),
+  linkFromMenu: (lines: unknown[]) => request<{ created: number; linked: number }>('/inventory/from-menu', 'POST', { lines }),
+  forecast: (days = 30) => request<InventoryForecast>(`/inventory/forecast${q({ days: String(days) })}`),
   setRecipe: (menuItemId: string, lines: RecipeLine[]) =>
     request<void>(`/inventory/recipes/${encodeURIComponent(menuItemId)}`, 'PUT', { lines }),
   suppliers: () => request<Supplier[]>('/inventory/suppliers'),
   createSupplier: (body: unknown) => request<void>('/inventory/suppliers', 'POST', body),
   updateSupplier: (id: number, body: unknown) => request<void>(`/inventory/suppliers/${id}`, 'PATCH', body),
+  deleteSupplier: (id: number) => request<void>(`/inventory/suppliers/${id}`, 'DELETE'),
   purchases: (from: string, to: string) => request<Purchase[]>(`/inventory/purchases${q({ from, to })}`),
   createPurchase: (body: unknown) => request<void>('/inventory/purchases', 'POST', body),
   adjustStock: (body: unknown) => request<void>('/inventory/adjust', 'POST', body),
   stocktake: (body: unknown) => request<void>('/inventory/stocktake', 'POST', body),
-  stockMoves: (from: string, to: string) => request<StockMove[]>(`/inventory/moves${q({ from, to })}`),
+  stockMoves: (from: string, to: string, ingredientId?: string, type?: string) =>
+    request<StockMove[]>(`/inventory/moves${q({ from, to, ingredientId, type })}`),
 
   // Báo cáo
   report: (from: string, to: string) => request<ReportSummary>(`/reports${q({ from, to })}`),
@@ -261,6 +284,7 @@ const errorMessages: Record<string, string> = {
   same_table: 'Hãy chọn một bàn khác.',
   table_has_history: 'Bàn đã có lịch sử bán hàng nên không xóa được. Có thể đổi tên thay vì xóa.',
   item_unavailable: 'Có món đã hết.',
+  insufficient_stock: 'Có món không còn đủ nguyên liệu cho số lượng đã chọn (xem Kho → Dự báo bán).',
   invalid_items: 'Danh sách món không hợp lệ.',
   invalid_price: 'Giá không hợp lệ.',
   invalid_name: 'Tên không hợp lệ.',
@@ -284,6 +308,21 @@ const errorMessages: Record<string, string> = {
   invalid_buyer_address: 'Thiếu địa chỉ công ty.',
   invoice_already_issued: 'Hóa đơn điện tử đã được xuất.',
   invoice_disabled: 'Chưa bật hóa đơn điện tử (Cài đặt → Hóa đơn điện tử).',
+  bill_voided: 'Hóa đơn này đã bị hủy.',
+  name_taken: 'Tên này đã có, hãy đặt tên khác.',
+  unit_locked: 'Nguyên liệu đã có lịch sử xuất nhập nên không đổi được đơn vị (sẽ làm sai số liệu cũ). Hãy tạo nguyên liệu mới nếu cần.',
+  ingredient_in_use: 'Nguyên liệu đã có lịch sử hoặc đang dùng trong định lượng nên không xóa được. Hãy bỏ chọn "Đang dùng" để ngừng dùng.',
+  ingredient_inactive: 'Có nguyên liệu đã ngừng dùng trong phiếu nhập.',
+  purchase_voided: 'Phiếu nhập này đã bị hủy.',
+  invalid_opening_stock: 'Tồn đầu kỳ không hợp lệ.',
+  invalid_cost: 'Giá vốn không hợp lệ.',
+  invalid_change: 'Số lượng thay đổi không hợp lệ.',
+  invalid_note: 'Vui lòng ghi lý do.',
+  invalid_recipe: 'Định lượng không hợp lệ (số lượng phải lớn hơn 0).',
+  invalid_unit: 'Đơn vị không hợp lệ.',
+  invalid_reason: 'Vui lòng ghi lý do.',
+  invalid_target: 'Danh mục / món được chọn không còn tồn tại.',
+  invalid_order: 'Thứ tự không hợp lệ, vui lòng tải lại.',
   shift_already_open: 'Đang có ca thu ngân mở.',
   no_open_shift: 'Chưa mở ca thu ngân.',
   already_clocked_in: 'Bạn đã vào ca rồi.',

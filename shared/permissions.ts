@@ -16,6 +16,7 @@ export type Permission =
   | 'reservations'
   | 'customers'
   | 'bills' // danh sách hóa đơn đã thanh toán
+  | 'voidBills' // hủy hóa đơn đã thanh toán (chỉ quản lý)
   | 'cashShift' // mở/chốt ca thu ngân
   | 'menu'
   | 'promotions'
@@ -31,6 +32,7 @@ const ALL: Permission[] = [
   'reservations',
   'customers',
   'bills',
+  'voidBills',
   'cashShift',
   'menu',
   'promotions',

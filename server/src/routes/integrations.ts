@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { broadcast } from '../events.ts';
 import { HttpError } from '../http.ts';
+import { afterStockChange } from '../modules/availability.ts';
 import { handleBankTransaction, verifyWebhookKey } from '../modules/bank.ts';
 import { pendingJobs, reportJob } from '../modules/printing.ts';
 import { getSecrets } from '../settings.ts';
@@ -19,6 +20,7 @@ integrationsRouter.post('/webhooks/bank', async (req, res) => {
     broadcast({ type: 'payment', tableId: result.tableId, sessionId: result.sessionId, amount: result.amount });
     broadcast({ type: 'table', tableId: result.tableId });
     broadcast({ type: 'data' });
+    afterStockChange();
   }
   // SePay coi phản hồi 2xx kèm success=true là đã nhận.
   res.json({ success: true, status: result.status });

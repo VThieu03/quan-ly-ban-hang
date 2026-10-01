@@ -1,7 +1,8 @@
 import { db } from '../db.ts';
 import type { PaymentMethod, ReportSummary } from '../../../shared/types.ts';
 
-const CLOSED = 's.closed_at >= ? AND s.closed_at < ? AND s.merged_into IS NULL';
+/** Hóa đơn đã thanh toán trong khoảng thời gian, không tính bàn bị gộp và hóa đơn đã hủy. */
+const CLOSED = 's.closed_at >= ? AND s.closed_at < ? AND s.merged_into IS NULL AND s.voided_at IS NULL';
 
 /** Giờ theo múi giờ máy chủ (dùng để nhóm theo ngày/giờ). */
 function local(iso: string) {
@@ -118,6 +119,13 @@ export function getReport(from: string, to: string, startIso: string, endIso: st
     )
     .get(startIso, endIso) as { cogs: number };
 
+  const voided = db
+    .prepare(
+      `SELECT COUNT(*) AS bills, COALESCE(SUM(total), 0) AS amount FROM sessions
+       WHERE closed_at >= ? AND closed_at < ? AND merged_into IS NULL AND voided_at IS NOT NULL`,
+    )
+    .get(startIso, endIso) as { bills: number; amount: number };
+
   return {
     from,
     to,
@@ -136,6 +144,7 @@ export function getReport(from: string, to: string, startIso: string, endIso: st
     byCategory: [...byCategory.values()].sort((a, b) => b.revenue - a.revenue),
     byStaff: [...byStaff.values()].sort((a, b) => b.revenue - a.revenue),
     cancelled,
+    voided,
   };
 }
 
@@ -150,22 +159,22 @@ export function billsCsv(startIso: string, endIso: string) {
     .prepare(
       `SELECT s.id, t.name AS table_name, s.opened_at, s.closed_at, s.guest_count, s.subtotal, s.discount_amount,
               s.discount_note, s.total, s.payment_method, s.vat_rate, c.phone, c.name AS customer_name, st.name AS cashier,
-              inv.invoice_no
+              inv.invoice_no, s.voided_at, s.void_reason
        FROM sessions s JOIN tables t ON t.id = s.table_id
        LEFT JOIN customers c ON c.id = s.customer_id LEFT JOIN staff st ON st.id = s.closed_by
        LEFT JOIN invoices inv ON inv.session_id = s.id
-       WHERE ${CLOSED} ORDER BY s.closed_at`,
+       WHERE s.closed_at >= ? AND s.closed_at < ? AND s.merged_into IS NULL ORDER BY s.closed_at`,
     )
     .all(startIso, endIso) as Record<string, unknown>[];
   const header = [
     'Mã HĐ', 'Bàn', 'Giờ vào', 'Giờ thanh toán', 'Số khách', 'Tạm tính', 'Giảm giá', 'Ghi chú giảm',
-    'Thành tiền', 'Hình thức', 'VAT %', 'SĐT khách', 'Tên khách', 'Thu ngân', 'Số HĐĐT',
+    'Thành tiền', 'Hình thức', 'VAT %', 'SĐT khách', 'Tên khách', 'Thu ngân', 'Số HĐĐT', 'Trạng thái', 'Lý do hủy',
   ];
   const lines = rows.map((r) =>
     [
       r.id, r.table_name, new Date(r.opened_at as string).toLocaleString('vi-VN'), new Date(r.closed_at as string).toLocaleString('vi-VN'),
       r.guest_count, r.subtotal, r.discount_amount, r.discount_note, r.total, r.payment_method, r.vat_rate,
-      r.phone, r.customer_name, r.cashier, r.invoice_no,
+      r.phone, r.customer_name, r.cashier, r.invoice_no, r.voided_at ? 'Đã hủy' : 'Đã thanh toán', r.void_reason,
     ]
       .map(csvCell)
       .join(','),

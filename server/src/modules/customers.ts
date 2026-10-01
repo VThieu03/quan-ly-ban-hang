@@ -1,4 +1,4 @@
-import { db, now } from '../db.ts';
+import { db, now, transaction } from '../db.ts';
 import { HttpError, int, phone, str } from '../http.ts';
 import type { Customer } from '../../../shared/types.ts';
 
@@ -63,6 +63,15 @@ export function createCustomer(body: Record<string, unknown>) {
     str(body.note, 'invalid_note', { max: 300, required: false }),
     now(),
   );
+}
+
+/** Xóa khách hàng; hóa đơn cũ vẫn giữ nhưng không còn gắn với khách này. */
+export function deleteCustomer(id: number) {
+  transaction(() => {
+    db.prepare('UPDATE sessions SET customer_id = NULL WHERE customer_id = ?').run(id);
+    const result = db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+    if (result.changes === 0) throw new HttpError(404, 'not_found');
+  });
 }
 
 export function updateCustomer(id: number, body: Record<string, unknown>) {

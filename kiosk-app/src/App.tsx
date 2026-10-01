@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatPrice } from '../../shared/format.ts';
 import { LANGS } from '../../shared/types.ts';
-import type { CustomerTableView, Lang, MenuCategory } from '../../shared/types.ts';
+import type { Banner, CustomerTableView, Lang, MenuCategory } from '../../shared/types.ts';
 import { api, ApiRequestError, subscribeTable } from './api.ts';
+import { BannerCarousel } from './components/BannerCarousel.tsx';
 import { CartPanel } from './components/CartPanel.tsx';
 import type { CartEntry } from './components/CartPanel.tsx';
 import { HistoryModal } from './components/HistoryModal.tsx';
 import { LanguageSwitcher } from './components/LanguageSwitcher.tsx';
 import { MenuItemCard } from './components/MenuItemCard.tsx';
 import { StatusScreen } from './components/StatusScreen.tsx';
-import { translator } from './i18n.ts';
+import { texts, translator } from './i18n.ts';
 import type { TextKey } from './i18n.ts';
 
 type CartLine = { menuItemId: string; quantity: number };
@@ -21,6 +22,7 @@ type LoadState = 'loading' | 'ready' | 'not_found' | 'error';
 const token = new URLSearchParams(window.location.search).get('t');
 const cartKey = `cart:${token}`;
 const POLL_MS = 10_000;
+const BEST_SELLER_ID = '__best_seller';
 
 function readStorage<T>(key: string): T | null {
   try {
@@ -56,11 +58,14 @@ function App() {
 
   const [loadState, setLoadState] = useState<LoadState>(token ? 'loading' : 'not_found');
   const [menu, setMenu] = useState<MenuCategory[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [table, setTable] = useState<CustomerTableView | null>(null);
   const [showThanks, setShowThanks] = useState(false);
   const lastSessionId = useRef<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  /** Món được làm nổi bật khi khách bấm banner trỏ tới món đó. */
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [cart, setCart] = useState<StoredCart>(() => readStorage<StoredCart>(cartKey) ?? { sessionId: null, lines: [] });
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
@@ -73,7 +78,9 @@ function App() {
   // ---------- Tải dữ liệu & realtime ----------
 
   const loadMenu = useCallback(async () => {
-    setMenu(await api.menu());
+    const [nextMenu, nextBanners] = await Promise.all([api.menu(), api.banners()]);
+    setMenu(nextMenu);
+    setBanners(nextBanners);
   }, []);
 
   const loadTable = useCallback(async () => {
@@ -129,6 +136,14 @@ function App() {
     return () => clearTimeout(timer);
   }, [showSuccess]);
 
+  // Món được trỏ tới từ banner: cuộn tới và nhấp nháy vài giây.
+  useEffect(() => {
+    if (!highlightId) return;
+    document.getElementById(`item-${highlightId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setHighlightId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [highlightId]);
+
   // ---------- Giỏ hàng ----------
 
   const sessionId = table?.session?.id ?? null;
@@ -144,12 +159,17 @@ function App() {
   const cartCount = entries.reduce((sum, e) => sum + e.quantity, 0);
   const cartTotal = entries.reduce((sum, e) => sum + e.item.price * e.quantity, 0);
 
-  const addToCart = (id: string) =>
+  const addToCart = (id: string) => {
+    // Không cho thêm quá số phần còn lại (khi quán bật theo dõi tồn kho).
+    const remaining = itemsById.get(id)?.remaining;
+    const inCart = lines.find((l) => l.menuItemId === id)?.quantity ?? 0;
+    if (remaining !== null && remaining !== undefined && inCart >= remaining) return;
     updateLines((ls) =>
       ls.some((l) => l.menuItemId === id)
         ? ls.map((l) => (l.menuItemId === id ? { ...l, quantity: l.quantity + 1 } : l))
         : [...ls, { menuItemId: id, quantity: 1 }],
     );
+  };
   const decreaseInCart = (id: string) =>
     updateLines((ls) =>
       ls.flatMap((l) => (l.menuItemId !== id ? [l] : l.quantity > 1 ? [{ ...l, quantity: l.quantity - 1 }] : [])),
@@ -179,6 +199,9 @@ function App() {
       if (e instanceof ApiRequestError && e.message === 'item_unavailable' && e.itemId) {
         removeFromCart(e.itemId);
         setOrderError('errorUnavailable');
+        loadMenu().catch(() => {});
+      } else if (e instanceof ApiRequestError && e.message === 'insufficient_stock') {
+        setOrderError('errorInsufficient');
         loadMenu().catch(() => {});
       } else if (e instanceof ApiRequestError && e.message === 'table_closed') {
         loadTable().catch(() => {});
@@ -250,7 +273,23 @@ function App() {
   // ---------- Màn hình gọi món ----------
 
   const session = table.session;
-  const activeCategory = menu.find((c) => c.id === activeCategoryId) ?? menu[0];
+  // Mục "Best seller" luôn đứng đầu khi có món được đánh dấu.
+  const featured = menu.flatMap((c) => c.items).filter((i) => i.featured);
+  const categories: MenuCategory[] = featured.length
+    ? [{ id: BEST_SELLER_ID, title: texts.bestSeller, items: featured }, ...menu]
+    : menu;
+  const activeCategory = categories.find((c) => c.id === activeCategoryId) ?? categories[0];
+
+  const openBanner = (banner: Banner) => {
+    if (banner.targetType === 'category' && banner.targetId) {
+      setActiveCategoryId(banner.targetId);
+    } else if (banner.targetType === 'item' && banner.targetId) {
+      const item = itemsById.get(banner.targetId);
+      if (!item) return;
+      setActiveCategoryId(item.categoryId);
+      setHighlightId(item.id);
+    }
+  };
   const cartPanel = (
     <CartPanel
       entries={entries}
@@ -279,7 +318,7 @@ function App() {
           <LanguageSwitcher lang={lang} onChange={setLang} />
         </div>
         <nav className="flex md:flex-col overflow-x-auto md:overflow-y-auto md:flex-1 md:py-4 border-b md:border-b-0 border-gray-200">
-          {menu.map((c) => (
+          {categories.map((c) => (
             <button
               key={c.id}
               onClick={() => setActiveCategoryId(c.id)}
@@ -297,6 +336,7 @@ function App() {
 
       {/* Danh sách món */}
       <main className="flex-1 overflow-y-auto p-3 md:p-6 pb-28 md:pb-6">
+        {banners.length > 0 && <BannerCarousel banners={banners} lang={lang} onSelect={openBanner} />}
         <h2 className="hidden md:block text-3xl font-bold text-gray-800 mb-6">{activeCategory?.title[lang]}</h2>
         <div className="grid grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-3 md:gap-6">
           {activeCategory?.items.map((item) => (
@@ -306,6 +346,7 @@ function App() {
               lang={lang}
               t={t}
               quantityInCart={lines.find((l) => l.menuItemId === item.id)?.quantity ?? 0}
+              highlighted={highlightId === item.id}
               onAdd={() => addToCart(item.id)}
             />
           ))}

@@ -1,5 +1,6 @@
 import type {
   ApiError,
+  Banner,
   CustomerTableView,
   MenuCategory,
   NewOrderRequest,
@@ -31,6 +32,7 @@ const tablePath = (token: string) => `/api/table/${encodeURIComponent(token)}`;
 
 export const api = {
   menu: () => request<MenuCategory[]>('/api/menu'),
+  banners: () => request<Banner[]>('/api/banners'),
   table: (token: string) => request<CustomerTableView>(tablePath(token)),
   placeOrder: (token: string, body: NewOrderRequest) =>
     request<Order>(`${tablePath(token)}/orders`, { method: 'POST', body: JSON.stringify(body) }),

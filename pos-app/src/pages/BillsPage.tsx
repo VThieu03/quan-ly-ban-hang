@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatPrice, formatTime } from '../../../shared/format.ts';
 import type { BillSummary, InvoiceInfo } from '../../../shared/types.ts';
 import { api, errorText, paymentLabels, run } from '../api.ts';
-import { useApp, useData } from '../context.ts';
+import { useApp, useCan, useData } from '../context.ts';
 import { Badge, Button, DateRange, Empty, Input, Modal, PageHeader, Table } from '../components/ui.tsx';
 import { useDateRange } from '../dates.ts';
 
@@ -10,8 +10,11 @@ export function InvoiceBadge({ invoice }: { invoice: InvoiceInfo | null }) {
   if (!invoice) return <span className="text-gray-400">—</span>;
   if (invoice.status === 'issued') return <Badge color="green">{invoice.invoiceNo}</Badge>;
   if (invoice.status === 'failed') return <Badge color="red">Lỗi</Badge>;
+  if (invoice.status === 'cancelled') return <Badge>Đã hủy{invoice.invoiceNo ? ` ${invoice.invoiceNo}` : ''}</Badge>;
   return <Badge color="amber">Đang gửi</Badge>;
 }
+
+const VOID_REASONS = ['Tính nhầm món / giá', 'Khách trả món', 'Thanh toán nhầm bàn', 'Nhập sai hình thức thanh toán'];
 
 export function BillsPage() {
   const { config } = useApp();
@@ -25,8 +28,10 @@ export function BillsPage() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
-  const total = filtered.reduce((sum, b) => sum + b.total, 0);
-  const failed = (bills ?? []).filter((b) => b.invoice && b.invoice.status !== 'issued').length;
+  const valid = filtered.filter((b) => !b.voided);
+  const total = valid.reduce((sum, b) => sum + b.total, 0);
+  const voidedCount = filtered.length - valid.length;
+  const failed = (bills ?? []).filter((b) => b.invoice && (b.invoice.status === 'failed' || b.invoice.status === 'pending')).length;
 
   return (
     <div>
@@ -42,15 +47,22 @@ export function BillsPage() {
         <Input className="max-w-xs" placeholder="Tìm mã HĐ, bàn, SĐT, số HĐĐT..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
       <p className="mb-2 text-gray-600">
-        {filtered.length} hóa đơn · <b className="text-red-600">{formatPrice(total)}</b>
+        {valid.length} hóa đơn · <b className="text-red-600">{formatPrice(total)}</b>
+        {voidedCount > 0 && <span className="text-gray-500"> · {voidedCount} hóa đơn đã hủy (không tính)</span>}
       </p>
       {bills && filtered.length === 0 ? (
         <Empty>Không có hóa đơn.</Empty>
       ) : (
         <Table head={['Mã', 'Giờ', 'Bàn', 'Khách', 'Giảm', 'Thành tiền', 'Hình thức', 'Thu ngân', 'HĐĐT']}>
           {filtered.map((b) => (
-            <tr key={b.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setOpenId(b.id)}>
-              <td className="px-3 py-2 font-mono">#{b.id}</td>
+            <tr
+              key={b.id}
+              className={`hover:bg-gray-50 cursor-pointer ${b.voided ? 'text-gray-400 line-through' : ''}`}
+              onClick={() => setOpenId(b.id)}
+            >
+              <td className="px-3 py-2 font-mono whitespace-nowrap">
+                #{b.id} {b.voided && <span className="no-underline inline-block"><Badge color="red">Đã hủy</Badge></span>}
+              </td>
               <td className="px-3 py-2 whitespace-nowrap">
                 {new Date(b.closedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} {formatTime(b.closedAt)}
               </td>
@@ -83,7 +95,10 @@ export function BillsPage() {
 
 function BillDialog({ billId, summary, onClose }: { billId: number; summary?: BillSummary; onClose: () => void }) {
   const { config } = useApp();
+  const can = useCan();
   const [bill, reload] = useData(() => api.bill(billId), [billId]);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [voidReason, setVoidReason] = useState(VOID_REASONS[0]);
   const [buyerOpen, setBuyerOpen] = useState(false);
   const [buyer, setBuyer] = useState({ companyName: '', taxCode: '', address: '', email: '' });
   const [busy, setBusy] = useState(false);
@@ -101,14 +116,34 @@ function BillDialog({ billId, summary, onClose }: { billId: number; summary?: Bi
     setBusy(false);
   };
 
+  const voidBill = async () => {
+    if (!bill || !confirm(`Hủy hóa đơn #${billId} (${formatPrice(bill.total)})? Thao tác này không hoàn tác được.`)) return;
+    setBusy(true);
+    try {
+      const result = await api.voidBill(billId, voidReason);
+      if (result.invoice?.error) alert(result.invoice.error);
+      setVoidOpen(false);
+      reload();
+    } catch (err) {
+      alert(errorText(err));
+    }
+    setBusy(false);
+  };
+
   const invoice = bill?.invoice ?? summary?.invoice ?? null;
+  const voided = bill?.voided ?? summary?.voided ?? null;
   return (
     <Modal
       title={`Hóa đơn #${billId} · ${summary?.tableName ?? ''}`}
       onClose={onClose}
       footer={
         <>
-          {config?.invoiceEnabled && invoice?.status !== 'issued' && (
+          {!voided && can('voidBills') && (
+            <Button variant="danger" className="mr-auto" disabled={busy} onClick={() => setVoidOpen(!voidOpen)}>
+              Hủy hóa đơn
+            </Button>
+          )}
+          {!voided && config?.invoiceEnabled && invoice?.status !== 'issued' && invoice?.status !== 'cancelled' && (
             <>
               <Button variant="secondary" disabled={busy} onClick={() => setBuyerOpen(!buyerOpen)}>
                 HĐ công ty
@@ -126,6 +161,36 @@ function BillDialog({ billId, summary, onClose }: { billId: number; summary?: Bi
         <p>Đang tải...</p>
       ) : (
         <>
+          {voided && (
+            <div className="bg-red-50 text-red-800 rounded-xl p-3">
+              <b>Đã hủy</b> lúc {new Date(voided.at).toLocaleString('vi-VN')}
+              {voided.by && ` bởi ${voided.by}`} · Lý do: {voided.reason}
+            </div>
+          )}
+          {voidOpen && (
+            <div className="border-2 border-red-300 rounded-xl p-3 space-y-2">
+              <p className="text-sm">
+                Hủy hóa đơn sẽ: hoàn lại nguyên liệu vào kho, trả lại điểm và lượt dùng mã cho khách, ghi khoản hoàn tiền{' '}
+                <b>{formatPrice(bill.total)}</b> ({paymentLabels[bill.paymentMethod]}) vào ca thu ngân, không tính vào doanh thu và
+                hủy hóa đơn điện tử (nếu có).
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {VOID_REASONS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setVoidReason(r)}
+                    className={`text-sm px-3 py-1.5 rounded-lg border ${voidReason === r ? 'border-red-600 bg-red-50 text-red-700' : ''}`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <Input value={voidReason} onChange={(e) => setVoidReason(e.target.value)} placeholder="Lý do hủy" maxLength={200} />
+              <Button disabled={busy || !voidReason.trim()} onClick={voidBill}>
+                Xác nhận hủy hóa đơn
+              </Button>
+            </div>
+          )}
           <p className="text-sm text-gray-600">
             Vào {formatTime(bill.openedAt)} · Thanh toán {new Date(bill.closedAt).toLocaleString('vi-VN')} ·{' '}
             {paymentLabels[bill.paymentMethod]} · Thu ngân: {bill.cashier ?? (bill.paymentMethod === 'transfer' ? 'Tự động (CK)' : '—')}

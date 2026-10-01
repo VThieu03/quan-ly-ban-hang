@@ -3,7 +3,7 @@ import { formatPrice } from '../../../shared/format.ts';
 import type { Customer } from '../../../shared/types.ts';
 import { api, run } from '../api.ts';
 import { useApp, useData } from '../context.ts';
-import { Button, Field, Input, Modal, PageHeader, Table, Textarea } from '../components/ui.tsx';
+import { Button, Field, Input, Modal, NumberInput, PageHeader, Table, Textarea } from '../components/ui.tsx';
 
 export function CustomersPage() {
   const { config } = useApp();
@@ -67,12 +67,23 @@ function CustomerDialog({ customer, onClose, onSaved }: { customer: Customer | n
     if (ok) onSaved();
   };
 
+  const remove = async () => {
+    if (!customer) return;
+    if (!confirm(`Xóa khách ${customer.name || customer.phone}? Điểm tích lũy (${customer.points}) sẽ mất, hóa đơn cũ vẫn giữ.`)) return;
+    if (await run(() => api.deleteCustomer(customer.id))) onSaved();
+  };
+
   return (
     <Modal
       title={customer ? `Khách ${customer.phone}` : 'Thêm khách hàng'}
       onClose={onClose}
       footer={
         <>
+          {customer && (
+            <Button variant="danger" className="mr-auto" onClick={remove}>
+              Xóa
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             Hủy
           </Button>
@@ -90,7 +101,7 @@ function CustomerDialog({ customer, onClose, onSaved }: { customer: Customer | n
       </Field>
       {customer && (
         <Field label="Điểm" hint="Chỉ chỉnh tay khi cần bù/trừ điểm đặc biệt.">
-          <Input type="number" min={0} value={points} onChange={(e) => setPoints(Math.max(0, Number(e.target.value) || 0))} />
+          <NumberInput value={points} onChange={(n) => setPoints(Math.max(0, n))} />
         </Field>
       )}
       <Field label="Ghi chú">

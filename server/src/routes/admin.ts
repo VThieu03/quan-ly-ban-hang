@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { broadcast } from '../events.ts';
 import { dateRange, HttpError, oneOf, str } from '../http.ts';
+import { afterStockChange } from '../modules/availability.ts';
 import { backupPath, createBackup, listBackups } from '../modules/backup.ts';
 import { recentBankTransactions } from '../modules/bank.ts';
 import {
@@ -8,16 +9,23 @@ import {
   createIngredient,
   createPurchase,
   createSupplier,
+  deleteIngredient,
+  deleteSupplier,
+  getForecast,
   getRecipes,
+  linkFromMenu,
   listIngredients,
   listMoves,
   listPurchases,
   listSuppliers,
   menuCosts,
+  setIngredientCosts,
   setRecipe,
   stocktake,
   updateIngredient,
+  updatePurchase,
   updateSupplier,
+  voidPurchase,
 } from '../modules/inventory.ts';
 import { retryPendingInvoices } from '../modules/invoices.ts';
 import {
@@ -25,6 +33,8 @@ import {
   createMenuItem,
   deleteCategory,
   deleteMenuItem,
+  reorderCategories,
+  reorderItems,
   saveImage,
   updateCategory,
   updateMenuItem,
@@ -38,7 +48,8 @@ import {
   retryJob,
   updatePrinter,
 } from '../modules/printing.ts';
-import { createPromotion, listPromotions, updatePromotion } from '../modules/promotions.ts';
+import { createBanner, deleteBanner, listBanners, reorderBanners, updateBanner } from '../modules/banners.ts';
+import { createPromotion, deletePromotion, listPromotions, updatePromotion } from '../modules/promotions.ts';
 import { billsCsv, getReport } from '../modules/reports.ts';
 import { createStaff, listStaff, listTimesheets, updateStaff } from '../modules/staff.ts';
 import { createTable, deleteTable, regenerateTableToken, updateTable } from '../modules/tables.ts';
@@ -77,17 +88,26 @@ adminRouter.post('/menu/items', need('menu'), (req, res) => {
 
 adminRouter.patch('/menu/items/:id', need('menu'), (req, res) => {
   updateMenuItem(req.params.id as string, req.body ?? {});
+  afterStockChange();
   broadcast({ type: 'menu' });
   res.status(204).end();
 });
 
 adminRouter.delete('/menu/items/:id', need('menu'), (req, res) => {
   deleteMenuItem(req.params.id as string);
+  afterStockChange();
   broadcast({ type: 'menu' });
   res.status(204).end();
 });
 
-adminRouter.post('/menu/images', need('menu'), (req, res) => {
+adminRouter.post('/menu/reorder', need('menu'), (req, res) => {
+  if (req.body?.categoryId) reorderItems(req.body.categoryId, req.body.ids);
+  else reorderCategories(req.body?.ids);
+  broadcast({ type: 'menu' });
+  res.status(204).end();
+});
+
+adminRouter.post('/menu/images', need('menu', 'promotions'), (req, res) => {
   res.status(201).json({ url: saveImage(req.body?.dataUrl) });
 });
 
@@ -138,6 +158,41 @@ adminRouter.patch('/promotions/:id', need('promotions'), (req, res) => {
   res.status(204).end();
 });
 
+adminRouter.delete('/promotions/:id', need('promotions'), (req, res) => {
+  deletePromotion(idParam(req));
+  res.status(204).end();
+});
+
+// ---------- Banner quảng cáo ----------
+
+adminRouter.get('/banners', need('promotions'), (_req, res) => {
+  res.json(listBanners());
+});
+
+adminRouter.post('/banners', need('promotions'), (req, res) => {
+  createBanner(req.body ?? {});
+  broadcast({ type: 'menu' });
+  res.status(201).end();
+});
+
+adminRouter.put('/banners/:id', need('promotions'), (req, res) => {
+  updateBanner(idParam(req), req.body ?? {});
+  broadcast({ type: 'menu' });
+  res.status(204).end();
+});
+
+adminRouter.delete('/banners/:id', need('promotions'), (req, res) => {
+  deleteBanner(idParam(req));
+  broadcast({ type: 'menu' });
+  res.status(204).end();
+});
+
+adminRouter.post('/banners/reorder', need('promotions'), (req, res) => {
+  reorderBanners(req.body?.ids);
+  broadcast({ type: 'menu' });
+  res.status(204).end();
+});
+
 // ---------- Kho ----------
 
 adminRouter.get('/inventory/ingredients', need('inventory'), (_req, res) => {
@@ -145,13 +200,30 @@ adminRouter.get('/inventory/ingredients', need('inventory'), (_req, res) => {
 });
 
 adminRouter.post('/inventory/ingredients', need('inventory'), (req, res) => {
-  createIngredient(req.body ?? {});
+  createIngredient(req.body ?? {}, me(res).id);
+  afterStockChange();
   res.status(201).end();
 });
 
 adminRouter.patch('/inventory/ingredients/:id', need('inventory'), (req, res) => {
   updateIngredient(idParam(req), req.body ?? {});
+  afterStockChange();
   res.status(204).end();
+});
+
+adminRouter.get('/inventory/forecast', need('inventory', 'menu'), (req, res) => {
+  res.json(getForecast(req.query.days ? Math.min(365, Math.max(1, Number(req.query.days) || 30)) : 30));
+});
+
+adminRouter.post('/inventory/costs', need('inventory'), (req, res) => {
+  setIngredientCosts(req.body ?? {}, me(res).id);
+  res.status(204).end();
+});
+
+adminRouter.post('/inventory/from-menu', need('inventory'), (req, res) => {
+  const result = linkFromMenu(req.body ?? {}, me(res).id);
+  afterStockChange();
+  res.status(201).json(result);
 });
 
 adminRouter.get('/inventory/recipes', need('inventory'), (_req, res) => {
@@ -160,6 +232,7 @@ adminRouter.get('/inventory/recipes', need('inventory'), (_req, res) => {
 
 adminRouter.put('/inventory/recipes/:menuItemId', need('inventory'), (req, res) => {
   setRecipe(req.params.menuItemId as string, req.body?.lines);
+  afterStockChange();
   res.status(204).end();
 });
 
@@ -177,6 +250,11 @@ adminRouter.patch('/inventory/suppliers/:id', need('inventory'), (req, res) => {
   res.status(204).end();
 });
 
+adminRouter.delete('/inventory/suppliers/:id', need('inventory'), (req, res) => {
+  deleteSupplier(idParam(req));
+  res.status(204).end();
+});
+
 adminRouter.get('/inventory/purchases', need('inventory'), (req, res) => {
   const { startIso, endIso } = dateRange(req.query.from, req.query.to);
   res.json(listPurchases(startIso, endIso));
@@ -184,22 +262,43 @@ adminRouter.get('/inventory/purchases', need('inventory'), (req, res) => {
 
 adminRouter.post('/inventory/purchases', need('inventory'), (req, res) => {
   createPurchase(req.body ?? {}, me(res).id);
+  afterStockChange();
   res.status(201).end();
+});
+
+adminRouter.put('/inventory/purchases/:id', need('inventory'), (req, res) => {
+  updatePurchase(idParam(req), req.body ?? {}, me(res).id);
+  afterStockChange();
+  res.status(204).end();
+});
+
+adminRouter.post('/inventory/purchases/:id/void', need('inventory'), (req, res) => {
+  voidPurchase(idParam(req), req.body?.reason, me(res).id);
+  afterStockChange();
+  res.status(204).end();
+});
+
+adminRouter.delete('/inventory/ingredients/:id', need('inventory'), (req, res) => {
+  deleteIngredient(idParam(req));
+  afterStockChange();
+  res.status(204).end();
 });
 
 adminRouter.post('/inventory/adjust', need('inventory'), (req, res) => {
   adjustStock(req.body ?? {}, me(res).id);
+  afterStockChange();
   res.status(204).end();
 });
 
 adminRouter.post('/inventory/stocktake', need('inventory'), (req, res) => {
   stocktake(req.body ?? {}, me(res).id);
+  afterStockChange();
   res.status(204).end();
 });
 
 adminRouter.get('/inventory/moves', need('inventory'), (req, res) => {
   const { startIso, endIso } = dateRange(req.query.from, req.query.to);
-  res.json(listMoves(startIso, endIso));
+  res.json(listMoves(startIso, endIso, { ingredientId: req.query.ingredientId, type: req.query.type }));
 });
 
 // ---------- Báo cáo ----------
@@ -257,6 +356,7 @@ adminRouter.get('/settings', need('settings'), (req, res) => {
 
 adminRouter.put('/settings', need('settings'), (req, res) => {
   const settings = updateSettings(req.body);
+  afterStockChange();
   broadcast({ type: 'data' });
   res.json(settings);
 });

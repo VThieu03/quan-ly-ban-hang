@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Reservation, ReservationStatus } from '../../../shared/types.ts';
 import { api, run } from '../api.ts';
 import { useData } from '../context.ts';
-import { Badge, Button, DateRange, Empty, Field, Input, Modal, PageHeader, Select, Table, Textarea } from '../components/ui.tsx';
+import { Badge, Button, DateRange, Empty, Field, Input, Modal, NumberInput, PageHeader, Select, Table, Textarea } from '../components/ui.tsx';
 import { shiftDate, today, useDateRange } from '../dates.ts';
 
 const STATUS: Record<ReservationStatus, { label: string; color: 'blue' | 'green' | 'gray' | 'red' }> = {
@@ -147,7 +147,7 @@ function ReservationDialog({
           <Input type="datetime-local" value={form.reservedAt} onChange={(e) => setForm({ ...form, reservedAt: e.target.value })} />
         </Field>
         <Field label="Số người">
-          <Input type="number" min={1} value={form.partySize} onChange={(e) => setForm({ ...form, partySize: Number(e.target.value) })} />
+          <NumberInput value={form.partySize} onChange={(n) => setForm({ ...form, partySize: n })} />
         </Field>
       </div>
       <Field label="Giữ bàn (không bắt buộc)">

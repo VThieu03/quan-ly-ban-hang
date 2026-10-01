@@ -4,9 +4,10 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const dataDir = fileURLToPath(new URL('../data/', import.meta.url));
-export const dbPath = process.env.DB_PATH ?? `${dataDir}app.db`;
-mkdirSync(dirname(dbPath), { recursive: true });
+export const dbPath = process.env.DB_PATH ?? fileURLToPath(new URL('../data/app.db', import.meta.url));
+/** Thư mục chứa database; ảnh tải lên và bản sao lưu nằm cạnh đó. */
+export const dataDir = `${dirname(dbPath)}/`;
+mkdirSync(dataDir, { recursive: true });
 
 export const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
@@ -272,6 +273,58 @@ const migrations: string[] = [
   );
   CREATE INDEX stock_moves_created ON stock_moves(created_at);
   CREATE INDEX stock_moves_ref ON stock_moves(type, ref_id);
+  `,
+
+  // 3. Món best seller, hủy hóa đơn, banner quảng cáo
+  `
+  ALTER TABLE menu_items ADD COLUMN featured INTEGER NOT NULL DEFAULT 0;
+
+  ALTER TABLE sessions ADD COLUMN voided_at TEXT;
+  ALTER TABLE sessions ADD COLUMN voided_by INTEGER;
+  ALTER TABLE sessions ADD COLUMN void_reason TEXT NOT NULL DEFAULT '';
+
+  CREATE TABLE banners (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    subtitle    TEXT NOT NULL,
+    image       TEXT NOT NULL,
+    target_type TEXT NOT NULL DEFAULT 'none',
+    target_id   TEXT,
+    starts_at   TEXT,
+    ends_at     TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    sort        INTEGER NOT NULL DEFAULT 0
+  );
+  `,
+
+  // 4. Kho: hủy phiếu nhập, làm tròn tồn kho (tránh sai số dấu phẩy động)
+  `
+  ALTER TABLE purchases ADD COLUMN voided_at TEXT;
+  ALTER TABLE purchases ADD COLUMN voided_by INTEGER;
+  ALTER TABLE purchases ADD COLUMN void_reason TEXT NOT NULL DEFAULT '';
+  UPDATE ingredients SET stock = ROUND(stock, 3);
+  CREATE INDEX IF NOT EXISTS stock_moves_ingredient ON stock_moves(ingredient_id, created_at);
+  `,
+
+  // 5. Sửa phiếu nhập: lưu các dòng hiện tại của phiếu riêng (lịch sử xuất nhập vẫn giữ nguyên)
+  `
+  CREATE TABLE purchase_lines (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    purchase_id   INTEGER NOT NULL REFERENCES purchases(id),
+    ingredient_id INTEGER NOT NULL REFERENCES ingredients(id),
+    quantity      REAL NOT NULL,
+    unit_cost     REAL NOT NULL
+  );
+  CREATE INDEX purchase_lines_purchase ON purchase_lines(purchase_id);
+  INSERT INTO purchase_lines (purchase_id, ingredient_id, quantity, unit_cost)
+    SELECT ref_id, ingredient_id, qty_change, unit_cost FROM stock_moves WHERE type = 'purchase' ORDER BY id;
+  ALTER TABLE purchases ADD COLUMN updated_at TEXT;
+  ALTER TABLE purchases ADD COLUMN updated_by INTEGER;
+  `,
+
+  // 6. Tự báo hết món khi hết nguyên liệu (đánh dấu món do hệ thống tắt, để tự bật lại khi có hàng)
+  `
+  ALTER TABLE menu_items ADD COLUMN auto_sold_out INTEGER NOT NULL DEFAULT 0;
   `,
 ];
 

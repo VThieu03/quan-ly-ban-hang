@@ -3,7 +3,7 @@ import { formatPrice } from '../../../shared/format.ts';
 import type { Promotion } from '../../../shared/types.ts';
 import { api, run } from '../api.ts';
 import { useData } from '../context.ts';
-import { Badge, Button, Field, Input, Modal, MoneyInput, PageHeader, Select, Table } from '../components/ui.tsx';
+import { Badge, Button, Field, Input, Modal, MoneyInput, NumberInput, PageHeader, Select, Table } from '../components/ui.tsx';
 
 function status(p: Promotion): { label: string; color: 'green' | 'gray' | 'amber' | 'red' } {
   const now = new Date().toISOString();
@@ -97,12 +97,22 @@ function PromotionDialog({ promotion, onClose, onSaved }: { promotion: Promotion
     if (ok) onSaved();
   };
 
+  const remove = async () => {
+    if (!promotion || !confirm(`Xóa mã ${promotion.code}? Hóa đơn đã dùng mã vẫn giữ nguyên.`)) return;
+    if (await run(() => api.deletePromotion(promotion.id))) onSaved();
+  };
+
   return (
     <Modal
       title={promotion ? `Sửa mã ${promotion.code}` : 'Tạo mã khuyến mãi'}
       onClose={onClose}
       footer={
         <>
+          {promotion && (
+            <Button variant="danger" className="mr-auto" onClick={remove}>
+              Xóa
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose}>
             Hủy
           </Button>
@@ -127,7 +137,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: { promotion: Promotion
         </Field>
         <Field label={form.type === 'percent' ? 'Giảm (%)' : 'Giảm (đ)'}>
           {form.type === 'percent' ? (
-            <Input type="number" min={1} max={100} value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} />
+            <NumberInput value={form.value} onChange={(n) => setForm({ ...form, value: Math.min(100, n) })} />
           ) : (
             <MoneyInput value={form.value} onChange={(value) => setForm({ ...form, value })} />
           )}
@@ -145,12 +155,10 @@ function PromotionDialog({ promotion, onClose, onSaved }: { promotion: Promotion
           <Input type="date" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
         </Field>
         <Field label="Số lượt dùng tối đa">
-          <Input
-            type="number"
-            min={0}
-            value={form.usageLimit || ''}
+          <NumberInput
+            value={form.usageLimit}
             placeholder="Không giới hạn"
-            onChange={(e) => setForm({ ...form, usageLimit: Number(e.target.value) })}
+            onChange={(n) => setForm({ ...form, usageLimit: n })}
           />
         </Field>
         <label className="flex items-center gap-2 mt-6">

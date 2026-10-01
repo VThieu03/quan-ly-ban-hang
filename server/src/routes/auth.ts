@@ -81,6 +81,7 @@ authRouter.get('/config', (_req, res) => {
     loyalty: settings.loyalty,
     bankConfigured: Boolean(settings.bank.bin && settings.bank.accountNumber),
     invoiceEnabled: settings.invoice.provider !== 'none',
+    autoSoldOut: settings.inventory.autoSoldOut,
   });
 });
 

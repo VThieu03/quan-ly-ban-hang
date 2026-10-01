@@ -2,8 +2,15 @@ import { db, now, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, phone, str } from '../http.ts';
 import { getSettings } from '../settings.ts';
 import { findCustomerByPhone, upsertCustomer } from './customers.ts';
-import { deductForSession } from './inventory.ts';
-import { createInvoice, ensureInvoiceForBill, invoiceForSession, issueInvoice, updateInvoiceBuyer } from './invoices.ts';
+import { deductForSession, restoreForSession } from './inventory.ts';
+import {
+  cancelInvoiceForSession,
+  createInvoice,
+  ensureInvoiceForBill,
+  invoiceForSession,
+  issueInvoice,
+  updateInvoiceBuyer,
+} from './invoices.ts';
 import type { InvoicePayload } from './invoices.ts';
 import { queryOrders } from './orders.ts';
 import { billLines, enqueueReceipt } from './printing.ts';
@@ -342,8 +349,9 @@ export function printProvisionalBill(tableId: number, request: CheckoutRequest |
 }
 
 export function reprintBill(billId: number) {
-  requireClosedSession(billId);
-  if (!enqueueReceipt(billLines(billPrintData(billId, 'HÓA ĐƠN (IN LẠI)')))) throw new HttpError(409, 'no_receipt_printer');
+  const row = requireClosedSession(billId);
+  const title = row.voided_at ? 'HÓA ĐƠN ĐÃ HỦY' : 'HÓA ĐƠN (IN LẠI)';
+  if (!enqueueReceipt(billLines(billPrintData(billId, title)))) throw new HttpError(409, 'no_receipt_printer');
 }
 
 // ---------- Danh sách hóa đơn đã thanh toán ----------
@@ -365,14 +373,21 @@ type SessionBillRow = {
   customer_name: string | null;
   customer_phone: string | null;
   cashier: string | null;
+  customer_id: number | null;
+  promotion_id: number | null;
+  voided_at: string | null;
+  voided_by_name: string | null;
+  void_reason: string;
 };
 
 const BILL_SELECT = `
-  SELECT s.*, t.name AS table_name, c.name AS customer_name, c.phone AS customer_phone, st.name AS cashier
+  SELECT s.*, t.name AS table_name, c.name AS customer_name, c.phone AS customer_phone, st.name AS cashier,
+         vb.name AS voided_by_name
   FROM sessions s
   JOIN tables t ON t.id = s.table_id
   LEFT JOIN customers c ON c.id = s.customer_id
-  LEFT JOIN staff st ON st.id = s.closed_by`;
+  LEFT JOIN staff st ON st.id = s.closed_by
+  LEFT JOIN staff vb ON vb.id = s.voided_by`;
 
 function toBill(r: SessionBillRow): BillSummary {
   return {
@@ -387,6 +402,7 @@ function toBill(r: SessionBillRow): BillSummary {
     customer: r.customer_phone ? { name: r.customer_name ?? '', phone: r.customer_phone } : null,
     cashier: r.cashier,
     invoice: invoiceForSession(r.id),
+    voided: r.voided_at ? { at: r.voided_at, by: r.voided_by_name, reason: r.void_reason } : null,
   };
 }
 
@@ -421,6 +437,7 @@ export function billDetail(billId: number): BillDetail {
 /** Xuất (hoặc xuất lại) hóa đơn điện tử cho bill đã thanh toán, có thể kèm thông tin công ty. */
 export async function issueBillInvoice(billId: number, buyerInput: unknown) {
   const row = requireClosedSession(billId);
+  if (row.voided_at) throw new HttpError(409, 'bill_voided');
   const buyer = buyerInput === undefined ? undefined : parseBuyer(buyerInput);
   const invoiceId = ensureInvoiceForBill(billId, () =>
     invoicePayload(
@@ -432,6 +449,42 @@ export async function issueBillInvoice(billId: number, buyerInput: unknown) {
   );
   if (buyer !== undefined) updateInvoiceBuyer(invoiceId, buyer);
   return issueInvoice(invoiceId);
+}
+
+/**
+ * Hủy hóa đơn đã thanh toán (tính nhầm, khách trả món...). Hoàn kho, hoàn điểm và lượt dùng mã,
+ * ghi khoản hoàn tiền âm (để ca thu ngân tính đúng tiền két), loại khỏi doanh thu, hủy HĐĐT.
+ */
+export async function voidBill(billId: number, reasonInput: unknown, staffId: number) {
+  const reason = str(reasonInput, 'invalid_reason', { max: 200 });
+  const row = requireClosedSession(billId);
+  if (row.voided_at) throw new HttpError(409, 'bill_voided');
+  const total = row.total ?? 0;
+
+  transaction(() => {
+    db.prepare('UPDATE sessions SET voided_at = ?, voided_by = ?, void_reason = ? WHERE id = ?').run(now(), staffId, reason, billId);
+    db.prepare('INSERT INTO payments (session_id, method, amount, reference, staff_id, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      billId,
+      row.payment_method ?? 'cash',
+      -total,
+      'Hủy hóa đơn',
+      staffId,
+      now(),
+    );
+    if (row.customer_id) {
+      db.prepare(
+        `UPDATE customers SET points = MAX(0, points + ? - ?), total_spent = MAX(0, total_spent - ?), visits = MAX(0, visits - 1)
+         WHERE id = ?`,
+      ).run(row.points_used, row.points_earned, total, row.customer_id);
+    }
+    if (row.promotion_id) {
+      db.prepare('UPDATE promotions SET used_count = MAX(0, used_count - 1) WHERE id = ?').run(row.promotion_id);
+    }
+    restoreForSession(billId, staffId);
+  });
+
+  await cancelInvoiceForSession(billId, reason);
+  return billDetail(billId);
 }
 
 export function tableIdOfSession(sessionId: number) {
