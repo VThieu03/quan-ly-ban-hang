@@ -1,24 +1,25 @@
 import { useEffect, useState } from 'react';
-import { BANNER_ROTATE_MS } from '../../../shared/config.ts';
 import type { Banner, Lang } from '../../../shared/types.ts';
 
 
 type Props = {
   banners: Banner[];
   lang: Lang;
+  /** Tự chuyển banner mỗi chừng này giây (Cài đặt → Hệ thống). */
+  seconds: number;
   onSelect: (banner: Banner) => void;
 };
 
-/** Banner quảng cáo đầu menu: tự chuyển mỗi 5 giây, bấm để tới danh mục / món khuyến mãi. */
-export function BannerCarousel({ banners, lang, onSelect }: Props) {
+/** Banner quảng cáo đầu menu: tự chuyển sau vài giây, bấm để tới danh mục / món khuyến mãi. */
+export function BannerCarousel({ banners, lang, seconds, onSelect }: Props) {
   const [index, setIndex] = useState(0);
   const current = banners[index % banners.length];
 
   useEffect(() => {
     if (banners.length < 2) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % banners.length), BANNER_ROTATE_MS);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % banners.length), seconds * 1000);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [banners.length, seconds]);
 
   if (!current) return null;
   const title = current.title[lang];

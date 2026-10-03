@@ -109,6 +109,8 @@ export type CustomerTableView = {
   id: number;
   name: string;
   session: TableSession | null;
+  /** Thông số cho app khách (Cài đặt → Hệ thống). */
+  kiosk: { pollSeconds: number; bannerSeconds: number; maxQuantityPerItem: number; maxNoteLength: number };
 };
 
 /** Thông tin bàn nhân viên nhìn thấy. */
@@ -385,6 +387,8 @@ export type PrintJob = {
   address: string;
   lines: PrintLine[];
   removeAccents: boolean;
+  /** Số ký tự mỗi dòng của giấy in (Cài đặt → Hệ thống). */
+  columns: number;
 };
 
 // ---------- Cài đặt ----------
@@ -409,6 +413,29 @@ export type Settings = {
     cancelReasons: string[];
     voidReasons: string[];
   };
+  /** Thông số hệ thống chủ quán tự chỉnh trong Cài đặt → Hệ thống (mặc định lấy từ shared/config.ts). */
+  system: SystemSettings;
+};
+
+export type SystemSettings = {
+  pollSeconds: number;
+  bannerSeconds: number;
+  unitSuggestions: string[];
+  forecastDays: number;
+  maxQuantityPerItem: number;
+  maxOrderLines: number;
+  maxNoteLength: number;
+  reservationUpcomingHours: number;
+  loginMaxFailed: number;
+  loginLockMinutes: number;
+  maxImageMB: number;
+  backupKeep: number;
+  invoiceRetryMinutes: number;
+  printMaxAttempts: number;
+  realtimePingSeconds: number;
+  printAgentPollSeconds: number;
+  printerTimeoutSeconds: number;
+  paperColumns: number;
 };
 
 // ---------- Dự báo tồn kho ----------

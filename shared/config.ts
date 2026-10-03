@@ -1,16 +1,17 @@
 // =============================================================================
-//  THÔNG SỐ CỦA HỆ THỐNG – sửa ở đây là áp dụng cho server, app quầy, app khách
-//  và chương trình in. Sửa xong cần build / khởi động lại server.
+//  GIÁ TRỊ MẶC ĐỊNH CỦA HỆ THỐNG
 //
-//  Không phải mọi giá trị đều nằm ở đây:
-//   - Cài đặt kinh doanh (VAT, ngân hàng, tích điểm, máy in, định lượng mặc định,
-//     lý do hủy...) chỉnh trong app quầy: Cài đặt. Các giá trị DEFAULT_* bên dưới
-//     chỉ là giá trị ban đầu khi chưa chỉnh.
-//   - Khóa bí mật / địa chỉ server (STAFF_PIN, PORT, ORDER_BASE_URL...) đặt bằng
-//     biến môi trường, KHÔNG ghi vào file này (repo đang công khai).
+//  Chủ quán chỉnh các thông số này ngay trong app quầy (đăng nhập quản lý):
+//    Cài đặt → Vận hành   và   Cài đặt → Hệ thống
+//  Giá trị đã chỉnh được lưu trong database và áp dụng ngay, không cần sửa code.
+//  File này chỉ là giá trị ban đầu (khi quán chưa chỉnh) và là nơi xem nhanh ý nghĩa
+//  từng thông số.
+//
+//  Khóa bí mật / địa chỉ server (STAFF_PIN, PORT, ORDER_BASE_URL...) đặt bằng biến
+//  môi trường, KHÔNG ghi vào file này (repo đang công khai).
 // =============================================================================
 
-// ---------- Giá trị mặc định cho Cài đặt → Vận hành ----------
+// ---------- Cài đặt → Vận hành ----------
 
 /** Lượng nguyên liệu cho 1 phần khi tạo định lượng từ thực đơn (theo đơn vị nguyên liệu, vd 0.15 kg). */
 export const DEFAULT_PORTION = 0.15;
@@ -22,48 +23,31 @@ export const DEFAULT_LOW_STOCK_BADGE = 5;
 export const DEFAULT_KITCHEN_LATE_MINUTES = 15;
 
 /** Lý do gợi ý khi hủy món trong đơn. */
-export const DEFAULT_CANCEL_REASONS = [
-  "Khách đổi ý",
-  "Hết món",
-  "Nhầm món",
-  "Lên chậm",
-];
+export const DEFAULT_CANCEL_REASONS = ['Khách đổi ý', 'Hết món', 'Nhầm món', 'Lên chậm'];
 
 /** Lý do gợi ý khi hủy hóa đơn đã thanh toán. */
 export const DEFAULT_VOID_REASONS = [
-  "Tính nhầm món / giá",
-  "Khách trả món",
-  "Thanh toán nhầm bàn",
-  "Nhập sai hình thức thanh toán",
+  'Tính nhầm món / giá',
+  'Khách trả món',
+  'Thanh toán nhầm bàn',
+  'Nhập sai hình thức thanh toán',
 ];
 
-// ---------- Màn hình ----------
+// ---------- Cài đặt → Hệ thống: màn hình ----------
 
-/** App khách và app quầy tự tải lại dữ liệu mỗi chừng này mili-giây (dự phòng khi mạng chặn cập nhật realtime). */
-export const POLL_MS = 10_000;
+/** App khách và app quầy tự tải lại dữ liệu mỗi chừng này giây (dự phòng khi mạng chặn cập nhật realtime). */
+export const POLL_SECONDS = 10;
 
-/** Banner quảng cáo tự chuyển mỗi chừng này mili-giây. */
-export const BANNER_ROTATE_MS = 5_000;
+/** Banner quảng cáo tự chuyển mỗi chừng này giây. */
+export const BANNER_SECONDS = 5;
 
 /** Đơn vị gợi ý khi tạo nguyên liệu. */
-export const UNIT_SUGGESTIONS = [
-  "kg",
-  "g",
-  "lít",
-  "ml",
-  "cái",
-  "quả",
-  "gói",
-  "hộp",
-  "chai",
-  "lon",
-  "bó",
-];
+export const UNIT_SUGGESTIONS = ['kg', 'g', 'lít', 'ml', 'cái', 'quả', 'gói', 'hộp', 'chai', 'lon', 'bó'];
 
 /** Số ngày bán gần nhất dùng để ước tính doanh thu từ tồn kho (Kho → Dự báo bán). */
 export const FORECAST_DAYS = 30;
 
-// ---------- Gọi món ----------
+// ---------- Cài đặt → Hệ thống: gọi món & đặt bàn ----------
 
 /** Tối đa số phần cho 1 món trong 1 lần gọi. */
 export const MAX_QUANTITY_PER_ITEM = 99;
@@ -71,44 +55,44 @@ export const MAX_QUANTITY_PER_ITEM = 99;
 /** Tối đa số món khác nhau trong 1 lần gọi. */
 export const MAX_ORDER_LINES = 50;
 
-/** Độ dài tối đa ghi chú cho bếp. */
+/** Độ dài tối đa ghi chú cho bếp (ký tự). */
 export const MAX_NOTE_LENGTH = 200;
 
 /** Lịch đặt bàn hiện trên sơ đồ bàn trong khoảng chừng này giờ trước giờ đến. */
 export const RESERVATION_UPCOMING_HOURS = 3;
 
-// ---------- Bảo mật đăng nhập ----------
+// ---------- Cài đặt → Hệ thống: bảo mật đăng nhập ----------
 
 /** Nhập sai PIN chừng này lần liên tiếp (theo từng máy / IP) thì bị khóa tạm. */
 export const LOGIN_MAX_FAILED = 5;
 
-/** Thời gian khóa sau khi nhập sai PIN quá nhiều (mili-giây). */
-export const LOGIN_LOCK_MS = 60_000;
+/** Thời gian khóa sau khi nhập sai PIN quá nhiều (phút). */
+export const LOGIN_LOCK_MINUTES = 1;
 
-// ---------- Server ----------
+// ---------- Cài đặt → Hệ thống: server ----------
 
-/** Dung lượng tối đa ảnh món / banner tải lên (byte). */
-export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+/** Dung lượng tối đa ảnh món / banner tải lên (MB, tối đa 10). */
+export const MAX_IMAGE_MB = 2;
 
-/** Số bản sao lưu database giữ lại (có thể đổi bằng biến môi trường BACKUP_KEEP). */
+/** Số bản sao lưu database giữ lại. */
 export const BACKUP_KEEP = 30;
 
-/** Gửi lại hóa đơn điện tử bị lỗi mỗi chừng này mili-giây. */
-export const INVOICE_RETRY_MS = 5 * 60_000;
+/** Gửi lại hóa đơn điện tử bị lỗi mỗi chừng này phút. */
+export const INVOICE_RETRY_MINUTES = 5;
 
 /** Lệnh in lỗi quá chừng này lần thì dừng thử lại (vào Cài đặt → Máy in để in lại). */
 export const PRINT_MAX_ATTEMPTS = 5;
 
-/** Gửi tín hiệu giữ kết nối realtime mỗi chừng này mili-giây (tránh router / proxy tự ngắt). */
-export const REALTIME_PING_MS = 25_000;
+/** Gửi tín hiệu giữ kết nối realtime mỗi chừng này giây (tránh router / proxy tự ngắt). */
+export const REALTIME_PING_SECONDS = 25;
 
-// ---------- Chương trình in (print-agent) ----------
+// ---------- Cài đặt → Hệ thống: chương trình in (print-agent) ----------
 
-/** Chương trình in hỏi server có lệnh in mới mỗi chừng này mili-giây (đổi bằng biến môi trường POLL_MS). */
-export const PRINT_AGENT_POLL_MS = 2_000;
+/** Chương trình in hỏi server có lệnh in mới mỗi chừng này giây. */
+export const PRINT_AGENT_POLL_SECONDS = 2;
 
-/** Chờ máy in phản hồi tối đa chừng này mili-giây. */
-export const PRINTER_TIMEOUT_MS = 5_000;
+/** Chờ máy in phản hồi tối đa chừng này giây. */
+export const PRINTER_TIMEOUT_SECONDS = 5;
 
-/** Số ký tự mỗi dòng: 48 cho giấy 80mm, 32 cho giấy 58mm (đổi bằng biến môi trường PAPER_COLUMNS). */
+/** Số ký tự mỗi dòng: 48 cho giấy 80mm, 32 cho giấy 58mm. */
 export const PAPER_COLUMNS = 48;

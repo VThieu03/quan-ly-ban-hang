@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { POLL_MS } from '../../shared/config.ts';
+import { BANNER_SECONDS, MAX_NOTE_LENGTH, MAX_QUANTITY_PER_ITEM, POLL_SECONDS } from '../../shared/config.ts';
 import { formatPrice } from '../../shared/format.ts';
 import { LANGS } from '../../shared/types.ts';
 import type { Banner, CustomerTableView, Lang, MenuCategory } from '../../shared/types.ts';
@@ -108,6 +108,7 @@ function App() {
   }, [loadAll]);
 
   const ready = loadState === 'ready';
+  const pollSeconds = table?.kiosk.pollSeconds ?? POLL_SECONDS;
   useEffect(() => {
     if (!ready || !token) return;
     const unsubscribe = subscribeTable(token, (event) => {
@@ -119,12 +120,12 @@ function App() {
       if (document.hidden) return;
       loadTable().catch(() => {});
       loadMenu().catch(() => {});
-    }, POLL_MS);
+    }, pollSeconds * 1000);
     return () => {
       unsubscribe();
       clearInterval(timer);
     };
-  }, [ready, loadTable, loadMenu]);
+  }, [ready, loadTable, loadMenu, pollSeconds]);
 
   useEffect(() => {
     writeStorage(cartKey, cart);
@@ -147,6 +148,13 @@ function App() {
   // ---------- Giỏ hàng ----------
 
   const sessionId = table?.session?.id ?? null;
+  // Thông số chủ quán chỉnh trong Cài đặt → Hệ thống (chưa tải xong thì dùng mặc định).
+  const kiosk = table?.kiosk ?? {
+    pollSeconds,
+    bannerSeconds: BANNER_SECONDS,
+    maxQuantityPerItem: MAX_QUANTITY_PER_ITEM,
+    maxNoteLength: MAX_NOTE_LENGTH,
+  };
   const lines = sessionId !== null && cart.sessionId === sessionId ? cart.lines : [];
   const updateLines = (fn: (lines: CartLine[]) => CartLine[]) =>
     setCart((prev) => ({ sessionId, lines: fn(prev.sessionId === sessionId ? prev.lines : []) }));
@@ -164,6 +172,7 @@ function App() {
     const remaining = itemsById.get(id)?.remaining;
     const inCart = lines.find((l) => l.menuItemId === id)?.quantity ?? 0;
     if (remaining !== null && remaining !== undefined && inCart >= remaining) return;
+    if (inCart >= kiosk.maxQuantityPerItem) return;
     updateLines((ls) =>
       ls.some((l) => l.menuItemId === id)
         ? ls.map((l) => (l.menuItemId === id ? { ...l, quantity: l.quantity + 1 } : l))
@@ -296,6 +305,7 @@ function App() {
       lang={lang}
       t={t}
       note={note}
+      maxNoteLength={kiosk.maxNoteLength}
       sending={sending}
       error={orderError && t(orderError)}
       onNoteChange={setNote}
@@ -336,7 +346,7 @@ function App() {
 
       {/* Danh sách món */}
       <main className="flex-1 overflow-y-auto p-3 md:p-6 pb-28 md:pb-6">
-        {banners.length > 0 && <BannerCarousel banners={banners} lang={lang} onSelect={openBanner} />}
+        {banners.length > 0 && <BannerCarousel banners={banners} lang={lang} seconds={kiosk.bannerSeconds} onSelect={openBanner} />}
         <h2 className="hidden md:block text-3xl font-bold text-gray-800 mb-6">{activeCategory?.title[lang]}</h2>
         <div className="grid grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-3 md:gap-6">
           {activeCategory?.items.map((item) => (

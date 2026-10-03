@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { db, now, randomToken, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
-import { LOGIN_LOCK_MS, LOGIN_MAX_FAILED } from '../../../shared/config.ts';
+import { getSettings } from '../settings.ts';
 import { ROLES } from '../../../shared/permissions.ts';
 import type { Role } from '../../../shared/permissions.ts';
 import type { CashShift, StaffMember, Timesheet } from '../../../shared/types.ts';
@@ -100,9 +100,7 @@ export function ensureAdmin() {
 
 // ---------- Đăng nhập ----------
 
-// Chống dò PIN theo từng địa chỉ IP: sai 5 lần thì khóa 1 phút.
-const MAX_FAILED = LOGIN_MAX_FAILED;
-const LOCK_MS = LOGIN_LOCK_MS;
+// Chống dò PIN theo từng địa chỉ IP: sai N lần thì khóa tạm (chỉnh trong Cài đặt → Hệ thống).
 const failures = new Map<string, { count: number; lockedUntil: number }>();
 
 export function login(pinInput: unknown, ip: string): { token: string; staff: StaffMember } {
@@ -112,7 +110,8 @@ export function login(pinInput: unknown, ip: string): { token: string; staff: St
   const staff = typeof pinInput === 'string' ? findStaffByPin(pinInput) : undefined;
   if (!staff) {
     const count = (entry?.count ?? 0) + 1;
-    failures.set(ip, count >= MAX_FAILED ? { count: 0, lockedUntil: Date.now() + LOCK_MS } : { count, lockedUntil: 0 });
+    const { loginMaxFailed, loginLockMinutes } = getSettings().system;
+    failures.set(ip, count >= loginMaxFailed ? { count: 0, lockedUntil: Date.now() + loginLockMinutes * 60_000 } : { count, lockedUntil: 0 });
     throw new HttpError(401, 'wrong_pin');
   }
   failures.delete(ip);

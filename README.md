@@ -95,7 +95,7 @@ Nhớ bật sao lưu / snapshot của nhà cung cấp VPS và định kỳ tải
 | `TRUST_PROXY`    | (tắt)                     | Đặt `loopback` / `true` khi chạy sau Caddy / nginx để chống dò PIN theo đúng IP. |
 | `TABLE_COUNT`    | `10`                      | Số bàn tạo lần đầu.                                                            |
 | `DB_PATH`        | `server/data/app.db`      | File database.                                                                 |
-| `BACKUP_DIR`     | `<thư mục database>/backups/` | Nơi lưu bản sao lưu tự động (mỗi ngày, giữ 30 bản; `BACKUP=off` để tắt).       |
+| `BACKUP_DIR`     | `<thư mục database>/backups/` | Nơi lưu bản sao lưu tự động (mỗi ngày, số bản giữ lại chỉnh trong Cài đặt → Hệ thống; `BACKUP=off` để tắt).       |
 
 ## Kết nối bên ngoài
 
@@ -118,7 +118,7 @@ SERVER_URL=https://order.ten-mien-cua-ban.vn AGENT_KEY=<lấy trong Cài đặt 
 # $env:SERVER_URL="https://..."; $env:AGENT_KEY="..."; npm run print-agent
 ```
 
-Tùy chọn: `PAPER_COLUMNS=32` cho giấy 58mm (mặc định 48 cho 80mm). Thêm máy in trong **Cài đặt → Máy in** (IP:cổng,
+Khổ giấy (48 ký tự cho 80mm, 32 cho 58mm) chỉnh trong **Cài đặt → Hệ thống**. Thêm máy in trong **Cài đặt → Máy in** (IP:cổng,
 loại bếp / hóa đơn, danh mục in), bấm **In thử**. Máy in không hỗ trợ tiếng Việt thì bật "In không dấu".
 
 ### Hóa đơn điện tử

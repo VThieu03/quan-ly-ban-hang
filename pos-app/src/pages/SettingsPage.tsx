@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { formatPrice } from '../../../shared/format.ts';
 import { BANKS } from '../../../shared/banks.ts';
+import { DEFAULT_SYSTEM, SYSTEM_GROUPS } from '../../../shared/systemFields.ts';
 import type { Printer, Settings, StaffTable } from '../../../shared/types.ts';
 import { api, download, run } from '../api.ts';
 import { useData } from '../context.ts';
 import { Badge, Button, Card, Field, Input, Modal, MoneyInput, NumberInput, PageHeader, Select, Table, Tabs, Textarea } from '../components/ui.tsx';
 import { formatDateTime } from '../dates.ts';
 
-type Tab = 'restaurant' | 'operations' | 'payment' | 'loyalty' | 'invoice' | 'printers' | 'tables' | 'backup';
+type Tab = 'restaurant' | 'operations' | 'system' | 'payment' | 'loyalty' | 'invoice' | 'printers' | 'tables' | 'backup';
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('restaurant');
@@ -27,7 +28,7 @@ export function SettingsPage() {
       alert('Đã lưu.');
     });
 
-  const formTabs: Tab[] = ['restaurant', 'operations', 'payment', 'loyalty', 'invoice'];
+  const formTabs: Tab[] = ['restaurant', 'operations', 'system', 'payment', 'loyalty', 'invoice'];
 
   return (
     <div className="max-w-4xl">
@@ -44,6 +45,7 @@ export function SettingsPage() {
           { id: 'printers', label: 'Máy in' },
           { id: 'tables', label: 'Bàn' },
           { id: 'backup', label: 'Sao lưu' },
+          { id: 'system', label: 'Hệ thống' },
         ]}
       />
       {formTabs.includes(tab) && draft && data && (
@@ -229,6 +231,62 @@ export function SettingsPage() {
               >
                 Lưu
               </Button>
+            </>
+          )}
+
+          {tab === 'system' && (
+            <>
+              <p className="text-sm text-gray-600">
+                Thông số kỹ thuật của hệ thống, chỉ quản lý được chỉnh. Lưu là áp dụng ngay cho server, mọi máy quầy, app khách và
+                chương trình in (không cần khởi động lại). Nếu không chắc, giữ nguyên giá trị mặc định.
+              </p>
+              {SYSTEM_GROUPS.map((group) => (
+                <div key={group.title} className="space-y-2">
+                  <h3 className="font-bold">{group.title}</h3>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {group.fields.map((f) => {
+                      const value = draft.system[f.key];
+                      const invalid = !(value >= f.min && value <= f.max);
+                      return (
+                        <Field
+                          key={f.key}
+                          label={`${f.label} (${f.unit})`}
+                          hint={`${f.hint ? `${f.hint} ` : ''}Mặc định ${DEFAULT_SYSTEM[f.key]}, cho phép ${f.min}–${f.max}.`}
+                        >
+                          <NumberInput
+                            decimal={f.decimal}
+                            className={`w-40 ${invalid ? 'border-red-500 bg-red-50' : ''}`}
+                            value={value}
+                            onChange={(n) => setDraft({ ...draft, system: { ...draft.system, [f.key]: n } })}
+                          />
+                        </Field>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <Field label="Đơn vị gợi ý khi tạo nguyên liệu (mỗi dòng 1 đơn vị)">
+                <Textarea
+                  rows={4}
+                  className="max-w-xs"
+                  value={draft.system.unitSuggestions.join('\n')}
+                  onChange={(e) => setDraft({ ...draft, system: { ...draft.system, unitSuggestions: e.target.value.split('\n') } })}
+                />
+              </Field>
+              <div className="flex gap-2">
+                <Button
+                  disabled={SYSTEM_GROUPS.some((g) => g.fields.some((f) => !(draft.system[f.key] >= f.min && draft.system[f.key] <= f.max)))}
+                  onClick={() => save({ system: draft.system })}
+                >
+                  Lưu
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => confirm('Đưa mọi thông số hệ thống về mặc định? (Bấm Lưu để áp dụng.)') && setDraft({ ...draft, system: DEFAULT_SYSTEM })}
+                >
+                  Khôi phục mặc định
+                </Button>
+              </div>
             </>
           )}
         </Card>

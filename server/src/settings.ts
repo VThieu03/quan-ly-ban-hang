@@ -1,13 +1,8 @@
 import { db, randomToken } from './db.ts';
 import { bad, int, num, oneOf, str } from './http.ts';
-import {
-  DEFAULT_CANCEL_REASONS,
-  DEFAULT_KITCHEN_LATE_MINUTES,
-  DEFAULT_LOW_STOCK_BADGE,
-  DEFAULT_PORTION,
-  DEFAULT_VOID_REASONS,
-} from '../../shared/config.ts';
-import type { Secrets, Settings } from '../../shared/types.ts';
+import { DEFAULT_SYSTEM, SYSTEM_FIELDS } from '../../shared/systemFields.ts';
+import * as config from '../../shared/config.ts';
+import type { Secrets, Settings, SystemSettings } from '../../shared/types.ts';
 
 export const DEFAULT_SETTINGS: Settings = {
   restaurant: { name: 'K-BBQ', address: '', phone: '', taxCode: '' },
@@ -19,13 +14,23 @@ export const DEFAULT_SETTINGS: Settings = {
   printing: { removeAccents: true, kitchenTickets: true, receiptOnCheckout: false },
   inventory: { autoSoldOut: false },
   operations: {
-    defaultPortion: DEFAULT_PORTION,
-    lowStockBadge: DEFAULT_LOW_STOCK_BADGE,
-    kitchenLateMinutes: DEFAULT_KITCHEN_LATE_MINUTES,
-    cancelReasons: DEFAULT_CANCEL_REASONS,
-    voidReasons: DEFAULT_VOID_REASONS,
+    defaultPortion: config.DEFAULT_PORTION,
+    lowStockBadge: config.DEFAULT_LOW_STOCK_BADGE,
+    kitchenLateMinutes: config.DEFAULT_KITCHEN_LATE_MINUTES,
+    cancelReasons: config.DEFAULT_CANCEL_REASONS,
+    voidReasons: config.DEFAULT_VOID_REASONS,
   },
+  system: DEFAULT_SYSTEM,
 };
+
+function systemSettings(value: unknown): SystemSettings {
+  const input = (value ?? {}) as Record<string, unknown>;
+  const result = { unitSuggestions: reasons(input.unitSuggestions, 30) } as SystemSettings;
+  for (const { key, min, max, decimal } of SYSTEM_FIELDS) {
+    result[key] = (decimal ? num : int)(input[key], `invalid_system_${key}`, { min, max });
+  }
+  return result;
+}
 
 function read<T>(key: string): T | undefined {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
@@ -50,14 +55,15 @@ export function getSettings(): Settings {
     printing: { ...DEFAULT_SETTINGS.printing, ...stored.printing },
     inventory: { ...DEFAULT_SETTINGS.inventory, ...stored.inventory },
     operations: { ...DEFAULT_SETTINGS.operations, ...stored.operations },
+    system: { ...DEFAULT_SETTINGS.system, ...stored.system },
   };
 }
 
-/** Danh sách lý do gợi ý: bỏ dòng trống / trùng, tối đa 20 dòng, mỗi dòng 100 ký tự. */
-function reasons(value: unknown): string[] {
+/** Danh sách gợi ý (lý do, đơn vị...): bỏ dòng trống / trùng, tối đa 20 dòng, mỗi dòng 100 ký tự. */
+function reasons(value: unknown, maxLength = 100): string[] {
   if (!Array.isArray(value)) throw bad('invalid_reasons');
   const list = value.filter((v): v is string => typeof v === 'string').map((v) => v.trim()).filter(Boolean);
-  if (list.some((v) => v.length > 100)) throw bad('invalid_reasons');
+  if (list.some((v) => v.length > maxLength)) throw bad('invalid_reasons');
   return [...new Set(list)].slice(0, 20);
 }
 
@@ -113,6 +119,7 @@ export function updateSettings(input: unknown): Settings {
           voidReasons: reasons(body.operations.voidReasons),
         }
       : current.operations,
+    system: body.system ? systemSettings(body.system) : current.system,
   };
   if (next.bank.bin && !/^\d{6}$/.test(next.bank.bin)) throw bad('invalid_bank_bin');
   write('settings', next);

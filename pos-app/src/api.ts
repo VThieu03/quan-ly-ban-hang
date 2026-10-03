@@ -32,7 +32,7 @@ import type {
   Timesheet,
 } from '../../shared/types.ts';
 
-import { FORECAST_DAYS } from '../../shared/config.ts';
+import { SYSTEM_FIELDS } from '../../shared/systemFields.ts';
 
 const TOKEN_KEY = 'staffToken';
 
@@ -97,6 +97,7 @@ export type PosConfig = {
   invoiceEnabled: boolean;
   autoSoldOut: boolean;
   operations: Settings['operations'];
+  system: Settings['system'];
 };
 
 export type MeInfo = { staff: StaffMember; timesheet: Timesheet | null; cashShift: CashShift | null };
@@ -218,7 +219,7 @@ export const api = {
   recipes: () => request<Record<string, RecipeLine[]>>('/inventory/recipes'),
   setIngredientCosts: (lines: { ingredientId: number; cost: number }[]) => request<void>('/inventory/costs', 'POST', { lines }),
   linkFromMenu: (lines: unknown[]) => request<{ created: number; linked: number }>('/inventory/from-menu', 'POST', { lines }),
-  forecast: (days = FORECAST_DAYS) => request<InventoryForecast>(`/inventory/forecast${q({ days: String(days) })}`),
+  forecast: (days?: number) => request<InventoryForecast>(`/inventory/forecast${q({ days: days ? String(days) : '' })}`),
   setRecipe: (menuItemId: string, lines: RecipeLine[]) =>
     request<void>(`/inventory/recipes/${encodeURIComponent(menuItemId)}`, 'PUT', { lines }),
   suppliers: () => request<Supplier[]>('/inventory/suppliers'),
@@ -332,7 +333,14 @@ const errorMessages: Record<string, string> = {
   not_clocked_in: 'Bạn chưa vào ca.',
   category_not_empty: 'Danh mục còn món, hãy chuyển hoặc xóa món trước.',
   invalid_image: 'Ảnh phải là JPG, PNG hoặc WEBP.',
-  image_too_large: 'Ảnh quá lớn (tối đa 2MB).',
+  image_too_large: 'Ảnh quá lớn (giới hạn chỉnh trong Cài đặt → Hệ thống).',
+  invalid_reasons: 'Danh sách gợi ý không hợp lệ (mỗi dòng tối đa 100 ký tự).',
+  invalid_default_portion: 'Định lượng mặc định phải từ 0,001 đến 1000.',
+  invalid_low_stock_badge: 'Ngưỡng "Chỉ còn N phần" phải là số nguyên từ 0 đến 999.',
+  invalid_kitchen_late: 'Số phút đơn bếp chậm phải từ 1 đến 600.',
+  ...Object.fromEntries(
+    SYSTEM_FIELDS.map((f) => [`invalid_system_${f.key}`, `"${f.label}" phải từ ${f.min} đến ${f.max} ${f.unit}.`]),
+  ),
   too_large: 'Dữ liệu gửi lên quá lớn.',
   reservation_not_bookable: 'Lịch đặt này đã được xử lý.',
   invalid_address: 'Địa chỉ không hợp lệ.',

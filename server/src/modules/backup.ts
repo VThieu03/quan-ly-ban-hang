@@ -1,11 +1,10 @@
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dataDir, db } from '../db.ts';
-import { BACKUP_KEEP } from '../../../shared/config.ts';
+import { getSettings } from '../settings.ts';
 
 // Sao lưu database SQLite bằng VACUUM INTO (an toàn khi server đang chạy).
 
 export const backupDir = process.env.BACKUP_DIR ?? `${dataDir}backups/`;
-const KEEP = Number(process.env.BACKUP_KEEP ?? BACKUP_KEEP);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function stamp() {
@@ -16,12 +15,12 @@ export function createBackup(): string {
   mkdirSync(backupDir, { recursive: true });
   const file = `${backupDir}app-${stamp()}.db`;
   db.prepare('VACUUM INTO ?').run(file);
-  // Giữ lại KEEP bản mới nhất.
+  // Giữ lại N bản mới nhất (Cài đặt → Hệ thống).
   const files = readdirSync(backupDir)
     .filter((f) => /^app-.*\.db$/.test(f))
     .sort()
     .reverse();
-  for (const old of files.slice(KEEP)) rmSync(`${backupDir}${old}`);
+  for (const old of files.slice(getSettings().system.backupKeep)) rmSync(`${backupDir}${old}`);
   return file;
 }
 

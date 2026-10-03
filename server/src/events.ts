@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { REALTIME_PING_MS } from '../../shared/config.ts';
+import { getSettings } from './settings.ts';
 import type { ServerEvent } from '../../shared/types.ts';
 
 // Server-Sent Events: server đẩy thông báo "có thay đổi", client tự tải lại dữ liệu.
@@ -32,7 +32,9 @@ export function broadcast(event: ServerEvent) {
   }
 }
 
-// Giữ kết nối sống qua proxy / router wifi.
-setInterval(() => {
+// Giữ kết nối sống qua proxy / router wifi (chu kỳ chỉnh trong Cài đặt → Hệ thống).
+function ping() {
   for (const client of clients) client.res.write(': ping\n\n');
-}, REALTIME_PING_MS).unref();
+  setTimeout(ping, getSettings().system.realtimePingSeconds * 1000).unref();
+}
+setTimeout(ping, getSettings().system.realtimePingSeconds * 1000).unref();

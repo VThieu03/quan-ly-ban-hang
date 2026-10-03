@@ -1,7 +1,6 @@
 import { db, now } from '../db.ts';
 import { bad, HttpError, oneOf, str } from '../http.ts';
 import { getSettings } from '../settings.ts';
-import { PRINT_MAX_ATTEMPTS as MAX_ATTEMPTS } from '../../../shared/config.ts';
 import { formatPrice, formatTime } from '../../../shared/format.ts';
 import type { Order, Printer, PrinterKind, PrintJob, PrintLine } from '../../../shared/types.ts';
 
@@ -166,7 +165,7 @@ export function enqueueTestPage(printerId: number) {
 // ---------- API cho chương trình in trên máy quầy ----------
 
 export function pendingJobs(): PrintJob[] {
-  const { removeAccents } = getSettings().printing;
+  const { printing: { removeAccents }, system } = getSettings();
   const rows = db
     .prepare(
       `SELECT j.id, j.printer_id, j.content, p.name, p.address FROM print_jobs j
@@ -174,7 +173,7 @@ export function pendingJobs(): PrintJob[] {
        WHERE j.status = 'pending' AND j.attempts < ? AND p.active = 1
        ORDER BY j.id LIMIT 20`,
     )
-    .all(MAX_ATTEMPTS) as { id: number; printer_id: number; content: string; name: string; address: string }[];
+    .all(system.printMaxAttempts) as { id: number; printer_id: number; content: string; name: string; address: string }[];
   return rows.map((r) => ({
     id: r.id,
     printerId: r.printer_id,
@@ -182,6 +181,7 @@ export function pendingJobs(): PrintJob[] {
     address: r.address,
     lines: JSON.parse(r.content),
     removeAccents,
+    columns: system.paperColumns,
   }));
 }
 
@@ -193,7 +193,7 @@ export function reportJob(id: number, ok: boolean, error: unknown) {
       `UPDATE print_jobs SET attempts = attempts + 1, error = ?,
          status = CASE WHEN attempts + 1 >= ? THEN 'failed' ELSE 'pending' END
        WHERE id = ?`,
-    ).run(typeof error === 'string' ? error.slice(0, 300) : 'unknown', MAX_ATTEMPTS, id);
+    ).run(typeof error === 'string' ? error.slice(0, 300) : 'unknown', getSettings().system.printMaxAttempts, id);
   }
 }
 

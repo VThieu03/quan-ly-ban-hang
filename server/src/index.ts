@@ -15,8 +15,7 @@ import { authRouter } from './routes/auth.ts';
 import { customerRouter } from './routes/customer.ts';
 import { integrationsRouter } from './routes/integrations.ts';
 import { operationsRouter } from './routes/operations.ts';
-import { getSecrets } from './settings.ts';
-import { INVOICE_RETRY_MS } from '../../shared/config.ts';
+import { getSecrets, getSettings } from './settings.ts';
 
 const isDev = process.argv.includes('--dev');
 const PORT = Number(process.env.PORT ?? 3000);
@@ -39,14 +38,21 @@ seedTables();
 ensureAdmin();
 getSecrets();
 if (process.env.BACKUP !== 'off') scheduleBackups();
-// Gửi lại hóa đơn điện tử lỗi (mất mạng, nhà cung cấp bảo trì...) mỗi 5 phút.
-setInterval(() => retryPendingInvoices().catch((err) => console.error('Gửi lại HĐĐT lỗi:', err)), INVOICE_RETRY_MS).unref();
+// Gửi lại hóa đơn điện tử lỗi (mất mạng, nhà cung cấp bảo trì...) theo chu kỳ trong Cài đặt → Hệ thống.
+function scheduleInvoiceRetry() {
+  setTimeout(() => {
+    retryPendingInvoices()
+      .catch((err) => console.error('Gửi lại HĐĐT lỗi:', err))
+      .finally(scheduleInvoiceRetry);
+  }, getSettings().system.invoiceRetryMinutes * 60_000).unref();
+}
+scheduleInvoiceRetry();
 
 const app = express();
 app.set('orderBaseUrl', orderBaseUrl);
 // Chạy sau reverse proxy (nginx, Cloudflare...) thì bật để lấy đúng IP khách khi chống dò PIN.
 if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? true : process.env.TRUST_PROXY);
-app.use(express.json({ limit: '4mb' })); // đủ cho ảnh món tải lên dạng base64
+app.use(express.json({ limit: '15mb' })); // đủ cho ảnh món tải lên dạng base64 (tối đa 10MB trong Cài đặt)
 
 app.use('/api', integrationsRouter);
 // authRouter xử lý /login rồi chặn mọi request chưa đăng nhập trước khi tới các router phía sau.

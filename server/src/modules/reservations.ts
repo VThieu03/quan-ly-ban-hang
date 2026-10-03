@@ -1,11 +1,9 @@
 import { db, now } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
-import { RESERVATION_UPCOMING_HOURS } from '../../../shared/config.ts';
+import { getSettings } from '../settings.ts';
 import type { Reservation, ReservationStatus } from '../../../shared/types.ts';
 
 const STATUSES: ReservationStatus[] = ['booked', 'seated', 'cancelled', 'no_show'];
-/** Bàn có lịch đặt trong khoảng này sẽ được nhắc trên sơ đồ bàn. */
-const UPCOMING_MS = RESERVATION_UPCOMING_HOURS * 60 * 60 * 1000;
 
 type ReservationRow = {
   id: number;
@@ -43,7 +41,7 @@ export function nextReservationFor(tableId: number): Reservation | null {
   const nowMs = Date.now();
   const row = db
     .prepare(`${SELECT} WHERE r.table_id = ? AND r.status = 'booked' AND r.reserved_at >= ? AND r.reserved_at < ? ORDER BY r.reserved_at LIMIT 1`)
-    .get(tableId, new Date(nowMs - 30 * 60_000).toISOString(), new Date(nowMs + UPCOMING_MS).toISOString()) as
+    .get(tableId, new Date(nowMs - 30 * 60_000).toISOString(), new Date(nowMs + getSettings().system.reservationUpcomingHours * 3_600_000).toISOString()) as
     | ReservationRow
     | undefined;
   return row ? toReservation(row) : null;

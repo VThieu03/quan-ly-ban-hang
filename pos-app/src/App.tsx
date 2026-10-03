@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { POLL_MS } from '../../shared/config.ts';
+import { POLL_SECONDS } from '../../shared/config.ts';
 import { formatPrice } from '../../shared/format.ts';
 import { can, ROLE_LABELS } from '../../shared/permissions.ts';
 import type { Permission } from '../../shared/permissions.ts';
@@ -95,15 +95,18 @@ function App() {
       // Token hết hạn thì server trả 401 và EventSource tự đóng: kiểm tra lại đăng nhập.
       if (source.readyState === EventSource.CLOSED) api.me().catch(() => {});
     };
-    // Dự phòng khi mạng/proxy chặn luồng realtime: tự tải lại định kỳ.
+    return () => source.close();
+  }, [token]);
+
+  // Dự phòng khi mạng/proxy chặn luồng realtime: tự tải lại định kỳ (chu kỳ trong Cài đặt → Hệ thống).
+  const pollSeconds = config?.system.pollSeconds ?? POLL_SECONDS;
+  useEffect(() => {
+    if (!token) return;
     const timer = setInterval(() => {
       if (!document.hidden) setVersion((v) => v + 1);
-    }, POLL_MS);
-    return () => {
-      source.close();
-      clearInterval(timer);
-    };
-  }, [token]);
+    }, pollSeconds * 1000);
+    return () => clearInterval(timer);
+  }, [token, pollSeconds]);
 
   // Tải lại cấu hình khi có thay đổi (vd vừa sửa Cài đặt → Vận hành) để mọi trang dùng số mới.
   useEffect(() => {

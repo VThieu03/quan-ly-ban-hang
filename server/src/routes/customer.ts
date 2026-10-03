@@ -35,7 +35,13 @@ customerRouter.get('/banners', (_req, res) => {
 
 customerRouter.get('/table/:token', (req, res) => {
   const table = tableFromToken(req);
-  const view: CustomerTableView = { id: table.id, name: table.name, session: getCustomerSession(table.id) };
+  const { pollSeconds, bannerSeconds, maxQuantityPerItem, maxNoteLength } = getSettings().system;
+  const view: CustomerTableView = {
+    id: table.id,
+    name: table.name,
+    session: getCustomerSession(table.id),
+    kiosk: { pollSeconds, bannerSeconds, maxQuantityPerItem, maxNoteLength },
+  };
   res.json(view);
 });
 

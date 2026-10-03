@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dataDir, db, randomToken, transaction } from '../db.ts';
 import { bad, HttpError, int, str } from '../http.ts';
 import { portionsByItem } from './availability.ts';
-import { MAX_IMAGE_BYTES } from '../../../shared/config.ts';
+import { getSettings } from '../settings.ts';
 import { LANGS } from '../../../shared/types.ts';
 import type { LocalizedText, MenuCategory, MenuItem } from '../../../shared/types.ts';
 
@@ -167,7 +167,7 @@ export function saveImage(dataUrl: unknown): string {
   const ext = match && IMAGE_TYPES[match[1]];
   if (!match || !ext) throw bad('invalid_image');
   const bytes = Buffer.from(match[2], 'base64');
-  if (bytes.length === 0 || bytes.length > MAX_IMAGE_BYTES) throw bad('image_too_large');
+  if (bytes.length === 0 || bytes.length > getSettings().system.maxImageMB * 1024 * 1024) throw bad('image_too_large');
   const file = `${randomToken(9)}.${ext}`;
   writeFileSync(`${uploadsDir}${file}`, bytes);
   return `/uploads/${file}`;

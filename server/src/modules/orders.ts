@@ -1,7 +1,6 @@
 import { db, now, transaction } from '../db.ts';
 import { bad, HttpError, int, oneOf, str } from '../http.ts';
 import { getSettings } from '../settings.ts';
-import { MAX_NOTE_LENGTH, MAX_ORDER_LINES as MAX_LINES, MAX_QUANTITY_PER_ITEM as MAX_QUANTITY } from '../../../shared/config.ts';
 import { portionsByItem } from './availability.ts';
 import { findMenuItem } from './menu.ts';
 import { enqueueKitchenTickets } from './printing.ts';
@@ -105,10 +104,10 @@ export function createOrder(
   const session = openSessionOf(tableId);
   if (!session) throw new HttpError(409, 'table_closed');
 
-  if (!Array.isArray(body?.items) || body.items.length === 0 || body.items.length > MAX_LINES) {
+  if (!Array.isArray(body?.items) || body.items.length === 0 || body.items.length > getSettings().system.maxOrderLines) {
     throw bad('invalid_items');
   }
-  const note = typeof body.note === 'string' ? body.note.trim().slice(0, MAX_NOTE_LENGTH) : '';
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, getSettings().system.maxNoteLength) : '';
 
   // Gộp các dòng trùng món, giá luôn lấy từ database chứ không tin client.
   const quantities = new Map<string, number>();
@@ -125,7 +124,7 @@ export function createOrder(
     const row = findMenuItem(id);
     if (!row) throw new HttpError(400, 'invalid_items', id);
     if (row.available !== 1) throw new HttpError(409, 'item_unavailable', id);
-    if (quantity > MAX_QUANTITY) throw new HttpError(400, 'invalid_items', id);
+    if (quantity > getSettings().system.maxQuantityPerItem) throw new HttpError(400, 'invalid_items', id);
     const left = portions?.get(id);
     if (left && quantity > left.portions) throw new HttpError(409, left.portions > 0 ? 'insufficient_stock' : 'item_unavailable', id);
     return { row, quantity };

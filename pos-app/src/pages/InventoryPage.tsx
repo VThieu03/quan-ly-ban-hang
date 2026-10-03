@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { formatPrice } from '../../../shared/format.ts';
 import type { Ingredient, MenuCategory, MenuItem, Purchase, RecipeLine, StockMoveType, Supplier } from '../../../shared/types.ts';
 import { api, errorText, run } from '../api.ts';
-import { useApp, useCan, useData, useOperations } from '../context.ts';
-import { FORECAST_DAYS, UNIT_SUGGESTIONS } from '../../../shared/config.ts';
+import { useApp, useCan, useData, useOperations, useSystem } from '../context.ts';
 import {
   Badge,
   Button,
@@ -440,6 +439,7 @@ function FromMenuDialog({
 }) {
   // Lượng mặc định cho 1 phần: Cài đặt → Vận hành.
   const portion = String(useOperations().defaultPortion);
+  const units = useSystem().unitSuggestions;
   const [rows, setRows] = useState<FromMenuRow[]>(() =>
     menu.flatMap((c) =>
       c.items.map((item) => {
@@ -540,7 +540,7 @@ function FromMenuDialog({
         </label>
       </div>
       <datalist id="unit-suggestions">
-        {UNIT_SUGGESTIONS.map((u) => (
+        {units.map((u) => (
           <option key={u} value={u} />
         ))}
       </datalist>
@@ -659,6 +659,7 @@ function FromMenuDialog({
 }
 
 function IngredientDialog({ ingredient, onClose, onSaved }: { ingredient: Ingredient | null; onClose: () => void; onSaved: () => void }) {
+  const units = useSystem().unitSuggestions;
   const [form, setForm] = useState({
     name: ingredient?.name ?? '',
     unit: ingredient?.unit ?? 'kg',
@@ -719,7 +720,7 @@ function IngredientDialog({ ingredient, onClose, onSaved }: { ingredient: Ingred
         >
           <Input list="unit-suggestions" value={form.unit} disabled={unitLocked} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
           <datalist id="unit-suggestions">
-            {UNIT_SUGGESTIONS.map((u) => (
+            {units.map((u) => (
               <option key={u} value={u} />
             ))}
           </datalist>
@@ -840,7 +841,9 @@ function AdjustDialog({ ingredient, onClose, onSaved }: { ingredient: Ingredient
 function ForecastTab() {
   const { config } = useApp();
   const can = useCan();
-  const [days, setDays] = useState(FORECAST_DAYS);
+  const defaultDays = useSystem().forecastDays;
+  const [chosenDays, setDays] = useState<number | null>(null);
+  const days = chosenDays ?? defaultDays;
   const [forecast] = useData(() => api.forecast(days), [days]);
   const [autoSoldOut, setAutoSoldOut] = useState<boolean | null>(null);
   const autoOn = autoSoldOut ?? config?.autoSoldOut ?? false;
@@ -885,7 +888,7 @@ function ForecastTab() {
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-gray-600">Ước tính theo số liệu bán:</span>
-        {[7, 30, 90].map((d) => (
+        {[...new Set([7, 30, 90, defaultDays])].sort((a, b) => a - b).map((d) => (
           <button
             key={d}
             onClick={() => setDays(d)}

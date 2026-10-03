@@ -83,6 +83,7 @@ authRouter.get('/config', (_req, res) => {
     invoiceEnabled: settings.invoice.provider !== 'none',
     autoSoldOut: settings.inventory.autoSoldOut,
     operations: settings.operations,
+    system: settings.system,
   });
 });
 

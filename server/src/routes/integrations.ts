@@ -6,7 +6,7 @@ import { HttpError } from '../http.ts';
 import { afterStockChange } from '../modules/availability.ts';
 import { handleBankTransaction, verifyWebhookKey } from '../modules/bank.ts';
 import { pendingJobs, reportJob } from '../modules/printing.ts';
-import { getSecrets } from '../settings.ts';
+import { getSecrets, getSettings } from '../settings.ts';
 import { idParam } from './auth.ts';
 
 // Kết nối bên ngoài: webhook ngân hàng và chương trình in trên máy quầy.
@@ -34,6 +34,10 @@ function requireAgent(req: Request, _res: Response, next: NextFunction) {
 }
 
 integrationsRouter.get('/print-agent/jobs', requireAgent, (_req, res) => {
+  // Chương trình in đọc chu kỳ hỏi lệnh & thời gian chờ máy in từ header (Cài đặt → Hệ thống).
+  const { printAgentPollSeconds, printerTimeoutSeconds } = getSettings().system;
+  res.set('x-poll-seconds', String(printAgentPollSeconds));
+  res.set('x-printer-timeout-seconds', String(printerTimeoutSeconds));
   res.json(pendingJobs());
 });
 

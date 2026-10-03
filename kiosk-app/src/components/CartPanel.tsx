@@ -9,6 +9,7 @@ type Props = {
   lang: Lang;
   t: Translate;
   note: string;
+  maxNoteLength: number;
   sending: boolean;
   error: string | null;
   onNoteChange: (note: string) => void;
@@ -26,6 +27,7 @@ export function CartPanel({
   sending,
   error,
   onNoteChange,
+  maxNoteLength,
   onAdd,
   onDecrease,
   onRemove,
@@ -82,7 +84,7 @@ export function CartPanel({
           <textarea
             value={note}
             onChange={(e) => onNoteChange(e.target.value)}
-            maxLength={200}
+            maxLength={maxNoteLength}
             rows={2}
             placeholder={t('notePlaceholder')}
             className="w-full border border-gray-200 rounded-lg p-2 text-sm resize-none focus:outline-red-400"
